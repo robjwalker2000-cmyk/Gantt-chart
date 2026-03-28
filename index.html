@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interactive Gantt Chart</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside id="controls-panel" class="controls-panel">
+      <button
+        id="panel-toggle"
+        type="button"
+        class="panel-toggle"
+        aria-expanded="true"
+        aria-controls="controls-panel-content"
+      >
+        Hide panel
+      </button>
+
+      <div id="controls-panel-content" class="controls-panel-content">
+        <div class="panel-card hero-card">
+          <p class="eyebrow">Project Planner</p>
+          <h1>Interactive Gantt Chart</h1>
+          <p class="hero-copy">
+            Add tasks, change colors, and drag task bars or endpoints to update the schedule directly on the timeline.
+          </p>
+        </div>
+
+        <form id="task-form" class="panel-card task-form">
+          <h2>Add Task</h2>
+
+          <label class="field">
+            <span>Task name</span>
+            <input id="task-name" name="taskName" type="text" maxlength="50" placeholder="Prototype design" required>
+          </label>
+
+          <div class="field-row">
+            <label class="field">
+              <span>Start</span>
+              <input id="task-start" name="taskStart" type="date" required>
+            </label>
+
+            <label class="field">
+              <span>End</span>
+              <input id="task-end" name="taskEnd" type="date" required>
+            </label>
+          </div>
+
+          <label class="field">
+            <span>Owner initials</span>
+            <input id="task-owner" name="taskOwner" type="text" maxlength="4" placeholder="AB">
+          </label>
+
+          <label class="field">
+            <span>Task color</span>
+            <div class="color-field">
+              <input id="task-color" name="taskColor" type="color" value="#ff7a59" aria-label="Choose task color">
+              <span id="task-color-value">#ff7a59</span>
+            </div>
+          </label>
+
+          <button type="submit" class="primary-button">Add task</button>
+        </form>
+
+        <form id="plan-form" class="panel-card task-form">
+          <h2>Plan Settings</h2>
+
+          <label class="field">
+            <span>Plan title</span>
+            <input id="plan-title" name="planTitle" type="text" maxlength="80" placeholder="Website Launch Plan">
+          </label>
+
+          <div class="field-row">
+            <label class="field">
+              <span>Plan start</span>
+              <input id="plan-start" name="planStart" type="date" required>
+            </label>
+
+            <label class="field">
+              <span>Plan end</span>
+              <input id="plan-end" name="planEnd" type="date" required>
+            </label>
+          </div>
+
+          <div class="field-row view-options-row">
+            <label class="field">
+              <span>Task detail level</span>
+              <select id="detail-level" name="detailLevel">
+                <option value="compressed" selected>Compressed</option>
+                <option value="summary">Summary</option>
+                <option value="detailed">Detailed</option>
+              </select>
+            </label>
+
+            <div class="field checkbox-field inline-field">
+              <span>Date columns</span>
+              <label class="inline-checkbox" for="show-compact-dates">
+                <input id="show-compact-dates" name="showCompactDates" type="checkbox">
+                <span>Show</span>
+              </label>
+            </div>
+          </div>
+
+          <button type="submit" class="primary-button">Update plan</button>
+        </form>
+
+        <section class="panel-card tips-card">
+          <h2>How to use</h2>
+          <div class="file-actions">
+            <button id="export-csv" type="button" class="secondary-button wide-button">Export CSV</button>
+            <button id="export-excel" type="button" class="secondary-button wide-button">Export Excel</button>
+            <button id="import-clipboard" type="button" class="secondary-button wide-button">Import Clipboard</button>
+            <label class="secondary-button wide-button file-input-label">
+              Import CSV
+              <input id="import-csv" type="file" accept=".csv,text/csv">
+            </label>
+          </div>
+          <ul>
+            <li>Drag the center of a task bar to move the whole task.</li>
+            <li>Drag the left or right handle to resize the start or end date.</li>
+            <li>Use the color swatch on each row to customise the task color.</li>
+            <li>Set the full plan window and zoom the timeline in or out from the chart header.</li>
+          </ul>
+        </section>
+      </div>
+    </aside>
+
+    <main class="board-panel">
+      <div class="panel-card board-card">
+        <div class="board-header">
+          <div>
+            <p class="eyebrow">Timeline</p>
+            <h2 id="plan-heading">Schedule Overview</h2>
+          </div>
+
+          <div class="board-legend">
+            <span id="plan-range-label">Plan range</span>
+            <span><i class="legend-dot drag-dot"></i> Move</span>
+            <span><i class="legend-dot resize-dot"></i> Resize</span>
+          </div>
+
+          <div class="chart-actions">
+            <span id="zoom-label" class="zoom-label">100%</span>
+            <button id="zoom-out" type="button" class="secondary-button" aria-label="Zoom out">-</button>
+            <button id="zoom-in" type="button" class="secondary-button" aria-label="Zoom in">+</button>
+          </div>
+        </div>
+
+        <div id="gantt-board" class="gantt-board">
+          <div id="empty-state" class="empty-state">
+            Add your first task to start building the chart.
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
