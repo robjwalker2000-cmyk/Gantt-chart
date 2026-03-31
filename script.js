@@ -49,6 +49,7 @@ const state = {
   editingTaskDateField: null,
   editingTaskNameId: null,
   editingTaskOwnerId: null,
+  rowDrag: null,
 };
 
 const board = document.getElementById("gantt-board");
@@ -293,8 +294,8 @@ function render() {
   grid.appendChild(renderHeader(scale, timelineMode));
   grid.appendChild(renderLabelResizer());
 
-  state.tasks.forEach((task) => {
-    grid.appendChild(renderTaskRow(task, scale, range.start, timelineMode));
+  state.tasks.forEach((task, index) => {
+    grid.appendChild(renderTaskRow(task, scale, range.start, timelineMode, index));
   });
 
   board.innerHTML = "";
@@ -398,9 +399,15 @@ function renderCompactDateCell(task, field) {
   return cell;
 }
 
-function renderTaskRow(task, scale, timelineStart, timelineMode) {
+function renderTaskRow(task, scale, timelineStart, timelineMode, index) {
   const row = document.createElement("div");
   row.className = "task-row";
+  row.dataset.taskId = task.id;
+  row.dataset.taskIndex = String(index);
+
+  if (state.rowDrag?.taskId === task.id) {
+    row.classList.add("is-row-dragging");
+  }
 
   const label = document.createElement("div");
   label.className = "task-label";
@@ -437,9 +444,16 @@ function renderTaskRow(task, scale, timelineStart, timelineMode) {
   });
 
   const ownerBadge = renderTaskOwnerControl(task);
+  const reorderHandle = document.createElement("button");
+  reorderHandle.type = "button";
+  reorderHandle.className = "task-reorder-handle";
+  reorderHandle.setAttribute("aria-label", `Move ${task.name} up or down`);
+  reorderHandle.title = "Drag to reorder task";
+  reorderHandle.textContent = "⋮⋮";
+  reorderHandle.addEventListener("pointerdown", (event) => handleTaskReorderStart(event, task.id));
 
   colorPickerWrap.appendChild(taskColorInput);
-  label.append(taskInfo, ownerBadge, colorPickerWrap);
+  label.append(reorderHandle, taskInfo, ownerBadge, colorPickerWrap);
   row.appendChild(label);
 
   if (shouldShowCompactDates()) {
@@ -577,6 +591,78 @@ function handlePointerUp(event) {
   window.removeEventListener("pointermove", handlePointerMove);
   window.removeEventListener("pointerup", handlePointerUp);
   window.removeEventListener("pointercancel", handlePointerUp);
+}
+
+function handleTaskReorderStart(event, taskId) {
+  event.preventDefault();
+  event.stopPropagation();
+
+  const taskIndex = state.tasks.findIndex((task) => task.id === taskId);
+  if (taskIndex === -1) {
+    return;
+  }
+
+  state.rowDrag = {
+    taskId,
+    currentIndex: taskIndex,
+  };
+
+  window.addEventListener("pointermove", handleTaskReorderMove);
+  window.addEventListener("pointerup", handleTaskReorderEnd);
+  window.addEventListener("pointercancel", handleTaskReorderEnd);
+  render();
+}
+
+function handleTaskReorderMove(event) {
+  if (!state.rowDrag) {
+    return;
+  }
+
+  const nextIndex = getTaskIndexFromPointer(event.clientY);
+  if (nextIndex === -1 || nextIndex === state.rowDrag.currentIndex) {
+    return;
+  }
+
+  moveTask(state.rowDrag.taskId, nextIndex);
+  state.rowDrag.currentIndex = nextIndex;
+  render();
+}
+
+function handleTaskReorderEnd() {
+  state.rowDrag = null;
+  window.removeEventListener("pointermove", handleTaskReorderMove);
+  window.removeEventListener("pointerup", handleTaskReorderEnd);
+  window.removeEventListener("pointercancel", handleTaskReorderEnd);
+  render();
+}
+
+function getTaskIndexFromPointer(clientY) {
+  const rows = [...board.querySelectorAll(".task-row")];
+  if (!rows.length) {
+    return -1;
+  }
+
+  for (let index = 0; index < rows.length; index += 1) {
+    const rect = rows[index].getBoundingClientRect();
+    const midpoint = rect.top + (rect.height / 2);
+    if (clientY < midpoint) {
+      return index;
+    }
+  }
+
+  return rows.length - 1;
+}
+
+function moveTask(taskId, nextIndex) {
+  const currentIndex = state.tasks.findIndex((task) => task.id === taskId);
+  if (currentIndex === -1 || currentIndex === nextIndex) {
+    return;
+  }
+
+  const tasks = [...state.tasks];
+  const [movedTask] = tasks.splice(currentIndex, 1);
+  tasks.splice(nextIndex, 0, movedTask);
+  state.tasks = tasks;
 }
 
 function getTimelineRange() {
