@@ -15,6 +15,13 @@
   --row-height: 66px;
   --summary-row-height: 38px;
   --compressed-row-height: 28px;
+  --chart-surface: linear-gradient(180deg, rgba(255, 250, 240, 0.94) 0%, rgba(255, 247, 235, 0.9) 100%);
+  --chart-header-surface: rgba(255, 250, 240, 0.96);
+  --chart-label-surface: rgba(255, 250, 240, 0.96);
+  --chart-compact-surface: rgba(255, 250, 240, 0.72);
+  --chart-slot-even: rgba(255, 255, 255, 0.42);
+  --chart-slot-odd: rgba(35, 27, 22, 0.05);
+  --chart-weekend: rgba(35, 27, 22, 0.03);
 }
 
 * {
@@ -119,6 +126,22 @@ h1 {
 
 h2 {
   font-size: 1.25rem;
+}
+
+#plan-heading {
+  cursor: pointer;
+}
+
+.plan-heading-editor {
+  width: min(100%, 420px);
+  border: 1px solid rgba(35, 27, 22, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.82);
+  padding: 8px 10px;
+  color: var(--text);
+  font: inherit;
+  font-size: inherit;
+  font-weight: 700;
 }
 
 .hero-copy,
@@ -285,10 +308,76 @@ input[type="color"] {
   cursor: pointer;
 }
 
+.zoom-input-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 76px;
+  padding: 0 10px;
+  height: 42px;
+  border: 1px solid rgba(35, 27, 22, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.74);
+}
+
+.timeline-mode-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid rgba(35, 27, 22, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.74);
+}
+
+.timeline-mode-button {
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.timeline-mode-button:hover {
+  color: var(--text);
+  background: rgba(35, 27, 22, 0.06);
+}
+
+.timeline-mode-button.is-active {
+  background: rgba(35, 27, 22, 0.9);
+  color: white;
+}
+
 .zoom-label {
-  min-width: 60px;
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
   text-align: center;
   font-weight: 700;
+  color: var(--text);
+  appearance: textfield;
+}
+
+.zoom-label:focus {
+  outline: none;
+}
+
+.zoom-label::-webkit-outer-spin-button,
+.zoom-label::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
+.zoom-suffix {
+  font-weight: 700;
+  color: var(--muted);
 }
 
 .board-panel {
@@ -357,8 +446,7 @@ input[type="color"] {
   overflow: auto;
   border-radius: 22px;
   border: 1px solid var(--border);
-  background:
-    linear-gradient(180deg, rgba(255, 250, 240, 0.94) 0%, rgba(255, 247, 235, 0.9) 100%);
+  background: var(--chart-surface);
 }
 
 .empty-state {
@@ -419,7 +507,7 @@ input[type="color"] {
   position: sticky;
   top: 0;
   z-index: 10;
-  background: rgba(255, 250, 240, 0.96);
+  background: var(--chart-header-surface);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
 }
@@ -433,8 +521,14 @@ input[type="color"] {
   position: sticky;
   left: 0;
   z-index: 8;
-  background: rgba(255, 250, 240, 0.96);
+  background: var(--chart-label-surface);
   border-right: 1px solid var(--border);
+}
+
+.gantt-grid.chart-only-view .corner-cell,
+.gantt-grid.chart-only-view .task-label {
+  border-right: 0;
+  padding: 0;
 }
 
 .corner-cell {
@@ -468,7 +562,7 @@ input[type="color"] {
 
 .compact-date-header {
   position: relative;
-  background: rgba(255, 250, 240, 0.96);
+  background: var(--chart-header-surface);
   font-weight: 700;
 }
 
@@ -477,7 +571,7 @@ input[type="color"] {
 }
 
 .compact-date-cell {
-  background: rgba(255, 250, 240, 0.72);
+  background: var(--chart-compact-surface);
 }
 
 button.compact-date-cell {
@@ -489,6 +583,11 @@ button.compact-date-cell {
 button.compact-date-cell:hover {
   background: rgba(255, 244, 225, 0.92);
   color: var(--text);
+}
+
+.compact-date-cell.is-readonly {
+  color: var(--text);
+  font-weight: 700;
 }
 
 .compact-date-resizer {
@@ -562,15 +661,15 @@ button.compact-date-cell:hover {
 }
 
 .year-shade-even {
-  background: rgba(255, 255, 255, 0.42);
+  background: var(--chart-slot-even);
 }
 
 .year-shade-odd {
-  background: rgba(35, 27, 22, 0.05);
+  background: var(--chart-slot-odd);
 }
 
 .timeline-day.weekend {
-  background: rgba(35, 27, 22, 0.03);
+  background: var(--chart-weekend);
 }
 
 .timeline-month {
@@ -578,11 +677,15 @@ button.compact-date-cell:hover {
   text-transform: uppercase;
   color: var(--muted);
   letter-spacing: 0.08em;
+  line-height: 1.1;
+  white-space: nowrap;
 }
 
 .timeline-date {
   font-size: 0.95rem;
   font-weight: 700;
+  line-height: 1.1;
+  white-space: nowrap;
 }
 
 .task-row {
@@ -878,6 +981,11 @@ button.compact-date-cell:hover {
   color: var(--text);
 }
 
+.task-date-button:disabled {
+  opacity: 0.72;
+  cursor: default;
+}
+
 .gantt-grid.compressed-view .task-date-button {
   display: none;
 }
@@ -942,7 +1050,27 @@ button.compact-date-cell:hover {
 }
 
 .day-cell.weekend {
-  background: rgba(35, 27, 22, 0.03);
+  background: var(--chart-weekend);
+}
+
+.gantt-grid[data-chart-color-scheme="cool-grey"] {
+  --chart-surface: linear-gradient(180deg, #eceff1 0%, #e3e7ea 100%);
+  --chart-header-surface: rgba(241, 244, 246, 0.96);
+  --chart-label-surface: rgba(241, 244, 246, 0.96);
+  --chart-compact-surface: rgba(233, 237, 240, 0.88);
+  --chart-slot-even: #f5f7f8;
+  --chart-slot-odd: #e6eaed;
+  --chart-weekend: #dde2e6;
+}
+
+.gantt-grid[data-chart-color-scheme="striped-grey"] {
+  --chart-surface: linear-gradient(180deg, #e7eaed 0%, #dde2e6 100%);
+  --chart-header-surface: rgba(238, 241, 243, 0.98);
+  --chart-label-surface: rgba(238, 241, 243, 0.98);
+  --chart-compact-surface: rgba(228, 232, 236, 0.94);
+  --chart-slot-even: #f2f4f6;
+  --chart-slot-odd: #d8dde2;
+  --chart-weekend: #cdd3d9;
 }
 
 .task-bar-layer {
@@ -1021,6 +1149,40 @@ button.compact-date-cell:hover {
   text-overflow: ellipsis;
 }
 
+.task-bar-delete {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(35, 27, 22, 0.88);
+  color: white;
+  font-size: 0.7rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+  z-index: 2;
+}
+
+.task-bar:hover .task-bar-delete,
+.task-bar:focus-within .task-bar-delete {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.task-bar.milestone .task-bar-delete {
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
+
 .resize-handle {
   position: absolute;
   top: 4px;
@@ -1042,6 +1204,18 @@ button.compact-date-cell:hover {
 .task-bar.is-resizing,
 .task-bar.is-moving {
   outline: 3px solid rgba(35, 27, 22, 0.12);
+}
+
+.gantt-grid.summary-view .task-bar-delete {
+  width: 16px;
+  height: 16px;
+  font-size: 0.62rem;
+}
+
+.gantt-grid.compressed-view .task-bar-delete {
+  width: 14px;
+  height: 14px;
+  font-size: 0.54rem;
 }
 
 @media (max-width: 980px) {
