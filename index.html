@@ -97,10 +97,56 @@
               </select>
             </label>
 
+            <label class="field">
+              <span>Timeline labels</span>
+              <select id="timeline-label-mode" name="timelineLabelMode">
+                <option value="auto" selected>Automatic</option>
+                <option value="week">Weeks</option>
+                <option value="month">Months</option>
+              </select>
+            </label>
+
             <div class="field checkbox-field inline-field">
               <span>Date columns</span>
               <label class="inline-checkbox" for="show-compact-dates">
                 <input id="show-compact-dates" name="showCompactDates" type="checkbox">
+                <span>Show</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="field-row view-options-row">
+            <div class="field checkbox-field inline-field">
+              <span>Task date labels</span>
+              <label class="inline-checkbox" for="show-task-dates">
+                <input id="show-task-dates" name="showTaskDates" type="checkbox" checked>
+                <span>Show</span>
+              </label>
+            </div>
+
+            <div class="field checkbox-field inline-field">
+              <span>Task labels & initials</span>
+              <label class="inline-checkbox" for="show-task-meta">
+                <input id="show-task-meta" name="showTaskMeta" type="checkbox" checked>
+                <span>Show</span>
+              </label>
+            </div>
+
+            <label class="field">
+              <span>Chart colour scheme</span>
+              <select id="chart-colour-scheme" name="chartColourScheme">
+                <option value="warm" selected>Warm</option>
+                <option value="cool-grey">Light grey</option>
+                <option value="striped-grey">Striped grey</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="field-row view-options-row">
+            <div class="field checkbox-field inline-field">
+              <span>Relative timeline numbering</span>
+              <label class="inline-checkbox" for="show-relative-timeline">
+                <input id="show-relative-timeline" name="showRelativeTimeline" type="checkbox">
                 <span>Show</span>
               </label>
             </div>
@@ -114,6 +160,8 @@
           <div class="file-actions">
             <button id="export-csv" type="button" class="secondary-button wide-button">Export CSV</button>
             <button id="export-excel" type="button" class="secondary-button wide-button">Export Excel</button>
+            <button id="export-ppt" type="button" class="secondary-button wide-button">Export PPT</button>
+            <button id="copy-chart-image" type="button" class="secondary-button wide-button">Copy Chart Image</button>
             <button id="import-clipboard" type="button" class="secondary-button wide-button">Import Clipboard</button>
             <label class="secondary-button wide-button file-input-label">
               Import CSV
@@ -141,12 +189,27 @@
 
           <div class="board-legend">
             <span id="plan-range-label">Plan range</span>
-            <span><i class="legend-dot drag-dot"></i> Move</span>
-            <span><i class="legend-dot resize-dot"></i> Resize</span>
           </div>
 
           <div class="chart-actions">
-            <span id="zoom-label" class="zoom-label">100%</span>
+            <div class="timeline-mode-switch" role="group" aria-label="Timeline slot size">
+              <button type="button" class="timeline-mode-button" data-timeline-mode="day" aria-pressed="false" title="Force day slots">
+                Day
+              </button>
+              <button type="button" class="timeline-mode-button" data-timeline-mode="week" aria-pressed="false" title="Force week slots">
+                Week
+              </button>
+              <button type="button" class="timeline-mode-button" data-timeline-mode="month" aria-pressed="false" title="Force month slots">
+                Month
+              </button>
+              <button type="button" class="timeline-mode-button" data-timeline-mode="year" aria-pressed="false" title="Force year slots">
+                Year
+              </button>
+            </div>
+            <label class="zoom-input-wrap" for="zoom-label">
+              <input id="zoom-label" class="zoom-label" type="number" min="8" max="360" step="1" value="100" aria-label="Zoom percentage">
+              <span class="zoom-suffix">%</span>
+            </label>
             <button id="zoom-out" type="button" class="secondary-button" aria-label="Zoom out">-</button>
             <button id="zoom-in" type="button" class="secondary-button" aria-label="Zoom in">+</button>
           </div>
