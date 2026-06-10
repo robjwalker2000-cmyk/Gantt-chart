@@ -70,8 +70,10 @@ const state = {
   showCompactDates: true,
   showTaskDates: true,
   showTaskMeta: true,
+  showTaskBarLabels: true,
+  showLabelOnly: false,
   showRelativeTimeline: false,
-  chartColorScheme: "warm",
+  chartColorScheme: "striped-grey",
   timelineModeOverride: null,
   editingPlanTitle: false,
   editingTaskId: null,
@@ -82,6 +84,25 @@ const state = {
 };
 
 const board = document.getElementById("gantt-board");
+const chartScrollbar = document.getElementById("chart-scrollbar");
+const chartScrollbarInner = document.getElementById("chart-scrollbar-inner");
+let boardResizeObserver = null;
+
+// Proxy scrollbar sync
+let scrollSyncing = false;
+board.addEventListener("scroll", () => {
+  if (scrollSyncing) return;
+  scrollSyncing = true;
+  chartScrollbar.scrollLeft = board.scrollLeft;
+  scrollSyncing = false;
+});
+chartScrollbar.addEventListener("scroll", () => {
+  if (scrollSyncing) return;
+  scrollSyncing = true;
+  board.scrollLeft = chartScrollbar.scrollLeft;
+  scrollSyncing = false;
+});
+
 const emptyState = document.getElementById("empty-state");
 const form = document.getElementById("task-form");
 const appShell = document.querySelector(".app-shell");
@@ -100,9 +121,13 @@ const detailLevelInput = document.getElementById("detail-level");
 const timelineLabelModeInput = document.getElementById("timeline-label-mode");
 const showCompactDatesInput = document.getElementById("show-compact-dates");
 const showTaskDatesInput = document.getElementById("show-task-dates");
+const showTaskBarLabelsInput = document.getElementById("show-task-bar-labels");
 const showTaskMetaInput = document.getElementById("show-task-meta");
+const showLabelOnlyInput = document.getElementById("show-label-only");
 const showRelativeTimelineInput = document.getElementById("show-relative-timeline");
 const chartColorSchemeInput = document.getElementById("chart-colour-scheme");
+const pageBgColorInput = document.getElementById("page-bg-color");
+const pageBgResetButton = document.getElementById("page-bg-reset");
 const zoomOutButton = document.getElementById("zoom-out");
 const zoomInButton = document.getElementById("zoom-in");
 const zoomLabel = document.getElementById("zoom-label");
@@ -226,7 +251,9 @@ planForm.addEventListener("submit", (event) => {
   state.timelineModeOverride = timelineLabelModeInput.value === "auto" ? null : timelineLabelModeInput.value;
   state.showCompactDates = showCompactDatesInput.checked;
   state.showTaskDates = showTaskDatesInput.checked;
+  state.showTaskBarLabels = showTaskBarLabelsInput.checked;
   state.showTaskMeta = showTaskMetaInput.checked;
+  state.showLabelOnly = showLabelOnlyInput.checked;
   state.showRelativeTimeline = showRelativeTimelineInput.checked;
   state.chartColorScheme = chartColorSchemeInput.value;
   syncCompactDateControl();
@@ -253,8 +280,27 @@ showTaskDatesInput.addEventListener("change", () => {
   render();
 });
 
+showTaskBarLabelsInput.addEventListener("change", () => {
+  state.showTaskBarLabels = showTaskBarLabelsInput.checked;
+  render();
+});
+
 showTaskMetaInput.addEventListener("change", () => {
   state.showTaskMeta = showTaskMetaInput.checked;
+  if (state.showTaskMeta) {
+    state.showLabelOnly = false;
+    showLabelOnlyInput.checked = false;
+  }
+  syncLayoutVars();
+  render();
+});
+
+showLabelOnlyInput.addEventListener("change", () => {
+  state.showLabelOnly = showLabelOnlyInput.checked;
+  if (state.showLabelOnly) {
+    state.showTaskMeta = false;
+    showTaskMetaInput.checked = false;
+  }
   syncLayoutVars();
   render();
 });
@@ -267,6 +313,17 @@ showRelativeTimelineInput.addEventListener("change", () => {
 chartColorSchemeInput.addEventListener("change", () => {
   state.chartColorScheme = chartColorSchemeInput.value;
   render();
+});
+
+const boardCard = document.querySelector(".board-card");
+
+pageBgColorInput.addEventListener("input", () => {
+  boardCard.style.background = pageBgColorInput.value;
+});
+
+pageBgResetButton.addEventListener("click", () => {
+  boardCard.style.background = "";
+  pageBgColorInput.value = "#f5ede4";
 });
 
 zoomOutButton.addEventListener("click", () => {
@@ -366,7 +423,9 @@ function initialisePlanDefaults() {
   timelineLabelModeInput.value = state.timelineModeOverride || "auto";
   showCompactDatesInput.checked = state.showCompactDates;
   showTaskDatesInput.checked = state.showTaskDates;
+  showTaskBarLabelsInput.checked = state.showTaskBarLabels;
   showTaskMetaInput.checked = state.showTaskMeta;
+  showLabelOnlyInput.checked = state.showLabelOnly;
   showRelativeTimelineInput.checked = state.showRelativeTimeline;
   chartColorSchemeInput.value = state.chartColorScheme;
 }
@@ -390,7 +449,8 @@ function render() {
   const grid = document.createElement("div");
   grid.className = "gantt-grid";
   grid.dataset.chartColorScheme = state.chartColorScheme;
-  if (!state.showTaskMeta) {
+  board.dataset.chartColorScheme = state.chartColorScheme;
+  if (!state.showTaskMeta && !state.showLabelOnly) {
     grid.classList.add("chart-only-view");
   }
   if (shouldShowCompactDates()) {
@@ -417,6 +477,143 @@ function render() {
   board.appendChild(grid);
   syncPlanHeading();
   syncPlanSummary();
+
+  // Use ResizeObserver so the extension fires after layout and re-fires on resize
+  if (boardResizeObserver) boardResizeObserver.disconnect();
+  boardResizeObserver = new ResizeObserver(() => {
+    const currentGrid = board.querySelector(".gantt-grid");
+    if (currentGrid) extendHeaderOverflow(board, currentGrid, scale, timelineMode);
+    chartScrollbarInner.style.width = `${board.scrollWidth}px`;
+  });
+  boardResizeObserver.observe(board);
+}
+
+function extendHeaderOverflow(board, grid, scale, timelineMode) {
+  // Reset any previous extension to get clean measurements
+  grid.querySelectorAll(".phantom-overflow").forEach((el) => el.remove());
+  // Restore any real year bands that were extended into the overflow area
+  grid.querySelectorAll("[data-original-grid-column]").forEach((el) => {
+    el.style.gridColumn = el.dataset.originalGridColumn;
+    delete el.dataset.originalGridColumn;
+  });
+  grid.style.removeProperty("--header-day-count");
+  grid.style.removeProperty("min-width");
+
+  // Measure actual timeline content width — grid.offsetWidth stretches to board width
+  // so we compute from CSS vars instead
+  const cs = getComputedStyle(grid);
+  const labelW = parseInt(cs.getPropertyValue("--label-column")) || 0;
+  const isCompact = grid.classList.contains("compact-dates");
+  const compactExtra = isCompact
+    ? (parseInt(cs.getPropertyValue("--compact-start-column")) || 0) +
+      (parseInt(cs.getPropertyValue("--compact-end-column")) || 0)
+    : 0;
+  const dayWidth = getDayWidth();
+  const contentWidth = labelW + compactExtra + scale.length * dayWidth;
+
+  const overflow = board.clientWidth - contentWidth;
+  if (overflow <= 0) return;
+
+  // Pin grid width so phantom header columns don't expand it and cause a loop
+  grid.style.minWidth = `${grid.offsetWidth}px`;
+
+  const extraCount = Math.ceil(overflow / dayWidth);
+  const lastSlot = scale[scale.length - 1];
+  const startIndex = scale.length;
+
+  // Build phantom scale continuing from the end of the plan
+  let phantomScale;
+  if (timelineMode === "year") {
+    const lastYear = lastSlot.start.getFullYear();
+    phantomScale = buildYearArray(new Date(lastYear + 1, 0, 1), new Date(lastYear + extraCount, 0, 1));
+  } else if (timelineMode === "month") {
+    phantomScale = buildMonthArray(addMonths(lastSlot.start, 1), addMonths(lastSlot.start, extraCount));
+  } else if (timelineMode === "week") {
+    const phantomStart = addDays(lastSlot.start, 7);
+    phantomScale = buildWeekArray(phantomStart, addDays(phantomStart, extraCount * 7));
+  } else {
+    const phantomStart = addDays(lastSlot.start, 1);
+    phantomScale = buildDayArray(phantomStart, addDays(phantomStart, extraCount));
+  }
+
+  const header = grid.querySelector(".timeline-header");
+  if (!header) return;
+
+  // Extend header columns independently (task rows keep --day-count unchanged)
+  const totalHeaderCount = startIndex + phantomScale.length;
+  grid.style.setProperty("--header-day-count", totalHeaderCount);
+
+  const timelineStartColumn = getTimelineGridStartColumn();
+
+  if (timelineMode === "month") {
+    const relativeStart = state.showRelativeTimeline ? getTimelineRange().start : null;
+    const allScaleGroups = relativeStart
+      ? groupMonthsByRelativeYear([...scale, ...phantomScale], relativeStart)
+      : groupMonthsByYear([...scale, ...phantomScale]);
+    const phantomGroups = relativeStart
+      ? groupMonthsByRelativeYear(phantomScale, relativeStart, scale.length)
+      : groupMonthsByYear(phantomScale);
+
+    const lastRealYear = scale[scale.length - 1].start.getFullYear();
+    const lastRealYearLabel = relativeStart
+      ? [...header.querySelectorAll(".timeline-year-band")].at(-1)?.textContent.trim()
+      : String(lastRealYear);
+
+    phantomGroups.forEach((group) => {
+      const groupLabel = relativeStart ? `Year ${group.relativeYear}` : String(group.year);
+      if (groupLabel === lastRealYearLabel) {
+        // Extend the existing real year band instead of creating a duplicate
+        const existingBand = [...header.querySelectorAll(".timeline-year-band")].find(
+          (el) => !el.dataset.originalGridColumn && el.textContent.trim() === lastRealYearLabel
+        );
+        if (existingBand) {
+          const currentSpan = existingBand.style.gridColumn.match(/span\s+(\d+)/);
+          const currentCount = currentSpan ? parseInt(currentSpan[1]) : 1;
+          const startCol = existingBand.style.gridColumn.split("/")[0].trim();
+          existingBand.dataset.originalGridColumn = existingBand.style.gridColumn;
+          existingBand.style.gridColumn = `${startCol} / span ${currentCount + group.months.length}`;
+          return;
+        }
+      }
+      const shadeIndex = relativeStart
+        ? (group.relativeYear - 1)
+        : getYearGroupIndex(allScaleGroups, group.year);
+      const yearCell = document.createElement("div");
+      yearCell.className = `timeline-year-band phantom-overflow ${getYearShadeClass(shadeIndex)}`;
+      yearCell.style.gridColumn = `${timelineStartColumn + startIndex + group.startIndex} / span ${group.months.length}`;
+      yearCell.style.gridRow = "1";
+      yearCell.textContent = groupLabel;
+      header.appendChild(yearCell);
+    });
+
+    phantomScale.forEach((slot, i) => {
+      const monthCell = document.createElement("div");
+      monthCell.className = `timeline-month-band phantom-overflow ${getYearShadeClass(startIndex + i)}`;
+      if (shouldRotateMonthLabel()) monthCell.classList.add("rotated");
+      monthCell.style.gridColumn = String(timelineStartColumn + startIndex + i);
+      monthCell.style.gridRow = "2";
+      if (relativeStart) {
+        const monthNumber = startIndex + i + 1;
+        monthCell.innerHTML = `
+          <div class="timeline-month">${getTimelinePeriodLabel("month")}</div>
+          <div class="timeline-date">${monthNumber}</div>
+        `;
+      } else {
+        monthCell.innerHTML = `<div class="timeline-month">${slot.start.toLocaleString("en-GB", { month: "short" })}</div>`;
+      }
+      header.appendChild(monthCell);
+    });
+  } else {
+    const relativeTimelineStart = getTimelineRange().start;
+    phantomScale.forEach((slot, i) => {
+      const cell = document.createElement("div");
+      cell.className = `timeline-day phantom-overflow ${getYearShadeClass(startIndex + i)}`;
+      if (timelineMode === "day" && isWeekend(slot.start)) cell.classList.add("weekend");
+      cell.style.gridColumn = String(timelineStartColumn + startIndex + i);
+      cell.innerHTML = getTimelineCellMarkup(slot, timelineMode, relativeTimelineStart);
+      header.appendChild(cell);
+    });
+  }
 }
 
 function renderHeader(scale, timelineMode) {
@@ -429,11 +626,8 @@ function renderHeader(scale, timelineMode) {
 
   const cornerCell = document.createElement("div");
   cornerCell.className = `corner-cell${timelineMode === "month" ? " month-corner" : ""}`;
-  if (state.showTaskMeta) {
-    cornerCell.innerHTML = `
-      <div class="eyebrow">Tasks</div>
-      <div class="timeline-subtitle">${scale.length} ${timelineMode} slots</div>
-    `;
+  if (state.showTaskMeta || state.showLabelOnly) {
+    cornerCell.innerHTML = `<div class="eyebrow">Tasks</div>`;
   }
   header.appendChild(cornerCell);
 
@@ -450,6 +644,7 @@ function renderHeader(scale, timelineMode) {
   scale.forEach((slot) => {
     const cell = document.createElement("div");
     cell.className = "timeline-day";
+    cell.classList.add(getYearShadeClass(getMonthStripeIndex(scale, slot, timelineMode)));
 
     if (timelineMode === "day" && isWeekend(slot.start)) {
       cell.classList.add("weekend");
@@ -482,11 +677,8 @@ function renderMonthBands(header, scale, timelineStart) {
   });
 
   scale.forEach((slot, index) => {
-    const shadeGroupIndex = state.showRelativeTimeline && timelineStart
-      ? Math.floor(index / 12)
-      : getYearGroupIndex(yearGroups, slot.start.getFullYear());
     const monthCell = document.createElement("div");
-    monthCell.className = `timeline-month-band ${getYearShadeClass(shadeGroupIndex)}`;
+    monthCell.className = `timeline-month-band ${getYearShadeClass(index)}`;
     if (shouldRotateMonthLabel()) {
       monthCell.classList.add("rotated");
     }
@@ -556,7 +748,12 @@ function renderTaskRow(taskRow, scale, timelineStart, timelineMode, index) {
   const label = document.createElement("div");
   label.className = "task-label";
 
-  if (state.showTaskMeta) {
+  if (state.showLabelOnly) {
+    const taskInfo = document.createElement("div");
+    taskInfo.className = "task-info";
+    taskInfo.appendChild(renderTaskTitleRow(taskRow));
+    label.appendChild(taskInfo);
+  } else if (state.showTaskMeta) {
     const taskInfo = document.createElement("div");
     taskInfo.className = "task-info";
     taskInfo.appendChild(renderTaskTitleRow(taskRow));
@@ -621,9 +818,7 @@ function renderTaskRow(taskRow, scale, timelineStart, timelineMode, index) {
     if (timelineMode === "day" && isWeekend(slot.start)) {
       cell.classList.add("weekend");
     }
-    if (timelineMode === "month" || timelineMode === "year") {
-      cell.classList.add(getYearShadeClass(getYearBandIndex(scale, slot, timelineMode)));
-    }
+    cell.classList.add(getYearShadeClass(getMonthStripeIndex(scale, slot, timelineMode)));
     row.appendChild(cell);
   });
 
@@ -684,9 +879,14 @@ function renderTaskRow(taskRow, scale, timelineStart, timelineMode, index) {
     });
 
     if (!task.milestone) {
-      bar.append(startHandle, labelText, endHandle, deleteButton);
+      if (state.showLabelOnly) {
+        bar.append(labelText);
+      } else {
+        bar.append(startHandle, labelText, endHandle, deleteButton);
+      }
     } else {
-      bar.append(labelText, deleteButton);
+      if (!state.showLabelOnly) bar.append(deleteButton);
+      bar.prepend(labelText);
     }
     bar.addEventListener("pointerdown", (event) => handlePointerDown(event, task.id));
     layer.appendChild(bar);
@@ -727,6 +927,17 @@ function handlePointerDown(event, taskId) {
   window.addEventListener("pointercancel", handlePointerUp);
 }
 
+function maybeExtendPlanEnd(date) {
+  const planEnd = toDate(state.planEnd);
+  if (date <= planEnd) return;
+  state.planEnd = formatInputDate(date);
+  planEndInput.value = state.planEnd;
+  // Extend the drag scale so getDateFromScaleUnits keeps working past the original end
+  const range = getTimelineRange();
+  const timelineMode = getTimelineMode(range);
+  state.drag.scale = buildTimelineScale(range.start, range.end, timelineMode);
+}
+
 function handlePointerMove(event) {
   if (!state.drag) {
     return;
@@ -748,15 +959,17 @@ function handlePointerMove(event) {
       ? nextStart
       : getDateFromScaleUnits(state.drag.originalEndUnits + unitDelta, state.drag.scale, true);
     const nextEnd = task.milestone ? nextStart : addDays(nextEndExclusive, -1);
-    if (isWithinPlan(nextStart, nextEnd)) {
+    const planStart = toDate(state.planStart);
+    if (nextStart >= planStart) {
       task.start = formatInputDate(nextStart);
       task.end = formatInputDate(nextEnd);
+      maybeExtendPlanEnd(nextEnd);
     }
   }
 
   if (state.drag.dragType === "resize-start") {
     const nextStart = getDateFromScaleUnits(state.drag.originalStartUnits + unitDelta, state.drag.scale);
-    if (nextStart <= toDate(task.end) && isWithinPlan(nextStart, toDate(task.end))) {
+    if (nextStart <= toDate(task.end) && nextStart >= toDate(state.planStart)) {
       task.start = formatInputDate(nextStart);
     }
   }
@@ -764,8 +977,9 @@ function handlePointerMove(event) {
   if (state.drag.dragType === "resize-end") {
     const nextEndExclusive = getDateFromScaleUnits(state.drag.originalEndUnits + unitDelta, state.drag.scale, true);
     const nextEnd = addDays(nextEndExclusive, -1);
-    if (nextEnd >= toDate(task.start) && isWithinPlan(toDate(task.start), nextEnd)) {
+    if (nextEnd >= toDate(task.start)) {
       task.end = formatInputDate(nextEnd);
+      maybeExtendPlanEnd(nextEnd);
     }
   }
 
@@ -931,6 +1145,7 @@ function getTaskRowHeight(taskCount) {
 }
 
 function getLabelColumnWidth() {
+  if (state.showLabelOnly) return Math.min(state.labelColumnWidth, 180);
   return state.showTaskMeta ? state.labelColumnWidth : 28;
 }
 
@@ -1031,6 +1246,9 @@ function syncLayoutVars() {
   document.documentElement.style.setProperty("--label-column", `${getLabelColumnWidth()}px`);
   document.documentElement.style.setProperty("--compact-start-column", `${state.compactStartColumnWidth}px`);
   document.documentElement.style.setProperty("--compact-end-column", `${state.compactEndColumnWidth}px`);
+  const timelineOffset = getLabelColumnWidth()
+    + (shouldShowCompactDates() ? state.compactStartColumnWidth + state.compactEndColumnWidth : 0);
+  document.documentElement.style.setProperty("--timeline-offset", `${timelineOffset}px`);
 }
 
 function syncCompactDateControl() {
@@ -1046,7 +1264,10 @@ function syncTimelineModeButtons() {
 }
 
 function shouldShowCompactDates() {
-  return state.showCompactDates && (state.detailLevel === "summary" || state.detailLevel === "compressed");
+  if (!state.showCompactDates) return false;
+  if (state.showLabelOnly) return false;
+  if (!state.showTaskMeta && !state.showLabelOnly) return false; // chart-only view
+  return state.detailLevel === "summary" || state.detailLevel === "compressed";
 }
 
 function syncZoomUi() {
@@ -1524,12 +1745,8 @@ function getExportSlotFill(slot, scale, timelineMode, scheme) {
     return scheme.weekend;
   }
 
-  if (timelineMode === "month" || timelineMode === "year") {
-    const bandIndex = getYearBandIndex(scale, slot, timelineMode);
-    return bandIndex % 2 === 0 ? scheme.slotEven : scheme.slotOdd;
-  }
-
-  return scheme.surface;
+  const bandIndex = getMonthStripeIndex(scale, slot, timelineMode);
+  return bandIndex % 2 === 0 ? scheme.slotEven : scheme.slotOdd;
 }
 
 function getExportTimelineLabels(slot, timelineMode, timelineStart) {
@@ -2434,15 +2651,17 @@ function renderTaskTitleRow(taskRow) {
     titleRow.appendChild(titleButton);
   }
 
-  const removeButton = document.createElement("button");
-  removeButton.type = "button";
-  removeButton.className = "task-remove-button";
-  removeButton.textContent = "x";
-  removeButton.setAttribute("aria-label", `Remove ${taskRow.name}`);
-  removeButton.addEventListener("click", () => {
-    removeTask(taskRow.id);
-  });
-  titleRow.appendChild(removeButton);
+  if (!state.showLabelOnly) {
+    const removeButton = document.createElement("button");
+    removeButton.type = "button";
+    removeButton.className = "task-remove-button";
+    removeButton.textContent = "x";
+    removeButton.setAttribute("aria-label", `Remove ${taskRow.name}`);
+    removeButton.addEventListener("click", () => {
+      removeTask(taskRow.id);
+    });
+    titleRow.appendChild(removeButton);
+  }
 
   return titleRow;
 }
@@ -2592,6 +2811,7 @@ function handleCompactDateResizeStart(event, field) {
 }
 
 function shouldHideTaskLabel(task, scale, timelineMode) {
+  if (!state.showTaskBarLabels) return true;
   const barWidth = task.milestone
     ? 24
     : getTaskPosition(task, scale).widthUnits * getDayWidth();
@@ -2654,8 +2874,12 @@ function getDateFromScaleUnits(units, scale, endExclusive = false) {
   }
 
   if (units >= scale.length) {
-    const lastSlotEndExclusive = addDays(scale[scale.length - 1].end, 1);
-    return endExclusive ? lastSlotEndExclusive : addDays(lastSlotEndExclusive, -1);
+    const lastSlot = scale[scale.length - 1];
+    const lastSlotDays = diffDays(lastSlot.start, addDays(lastSlot.end, 1));
+    const extraUnits = units - scale.length;
+    const extraDays = Math.round(extraUnits * lastSlotDays);
+    const extraDate = addDays(lastSlot.end, 1 + extraDays);
+    return endExclusive ? extraDate : addDays(extraDate, -1);
   }
 
   const slotIndex = Math.min(Math.floor(units), scale.length - 1);
@@ -2879,11 +3103,11 @@ function groupMonthsByYear(scale) {
   return groups;
 }
 
-function groupMonthsByRelativeYear(scale, timelineStart) {
+function groupMonthsByRelativeYear(scale, timelineStart, indexOffset = 0) {
   const groups = [];
 
   scale.forEach((slot, index) => {
-    const monthIndex = index;
+    const monthIndex = index + indexOffset;
     const relativeYear = Math.floor(monthIndex / 12) + 1;
     const lastGroup = groups[groups.length - 1];
 
@@ -2933,6 +3157,10 @@ function getYearBandIndex(scale, slot, timelineMode) {
 
 function getTimelineGridStartColumn() {
   return shouldShowCompactDates() ? 4 : 2;
+}
+
+function getMonthStripeIndex(scale, slot, timelineMode) {
+  return scale.findIndex((s) => s.start.getTime() === slot.start.getTime());
 }
 
 function getYearShadeClass(index) {

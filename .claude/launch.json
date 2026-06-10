@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "gantt-chart",
+      "runtimeExecutable": "/bin/sh",
+      "runtimeArgs": ["/tmp/gantt_start.sh"],
+      "port": 3456
+    }
+  ]
+}
