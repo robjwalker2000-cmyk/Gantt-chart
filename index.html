@@ -25,7 +25,7 @@
       <div id="controls-panel-content" class="controls-panel-content">
         <div class="panel-card hero-card">
           <p class="eyebrow">Project Planner</p>
-          <h1>Interactive Gantt Chart</h1>
+          <h1>Interactive Gantt Chart <span class="version-badge">v0.2</span></h1>
           <p class="hero-copy">
             Add tasks, change colors, and drag task bars or endpoints to update the schedule directly on the timeline.
           </p>
@@ -125,6 +125,14 @@
             </div>
 
             <div class="field checkbox-field inline-field">
+              <span>Task bar labels</span>
+              <label class="inline-checkbox" for="show-task-bar-labels">
+                <input id="show-task-bar-labels" name="showTaskBarLabels" type="checkbox" checked>
+                <span>Show</span>
+              </label>
+            </div>
+
+            <div class="field checkbox-field inline-field">
               <span>Task labels & initials</span>
               <label class="inline-checkbox" for="show-task-meta">
                 <input id="show-task-meta" name="showTaskMeta" type="checkbox" checked>
@@ -132,12 +140,20 @@
               </label>
             </div>
 
+            <div class="field checkbox-field inline-field">
+              <span>Label only</span>
+              <label class="inline-checkbox" for="show-label-only">
+                <input id="show-label-only" name="showLabelOnly" type="checkbox">
+                <span>Show</span>
+              </label>
+            </div>
+
             <label class="field">
               <span>Chart colour scheme</span>
               <select id="chart-colour-scheme" name="chartColourScheme">
-                <option value="warm" selected>Warm</option>
+                <option value="warm">Warm</option>
                 <option value="cool-grey">Light grey</option>
-                <option value="striped-grey">Striped grey</option>
+                <option value="striped-grey" selected>Striped grey</option>
               </select>
             </label>
           </div>
@@ -149,6 +165,16 @@
                 <input id="show-relative-timeline" name="showRelativeTimeline" type="checkbox">
                 <span>Show</span>
               </label>
+            </div>
+          </div>
+
+          <div class="field-row view-options-row">
+            <div class="field checkbox-field inline-field">
+              <span>Page background</span>
+              <div class="color-field">
+                <input id="page-bg-color" name="pageBgColor" type="color" value="#f5ede4" aria-label="Choose page background colour">
+                <button id="page-bg-reset" type="button" class="secondary-button">Reset</button>
+              </div>
             </div>
           </div>
 
@@ -219,6 +245,9 @@
           <div id="empty-state" class="empty-state">
             Add your first task to start building the chart.
           </div>
+        </div>
+        <div id="chart-scrollbar" class="chart-scrollbar">
+          <div id="chart-scrollbar-inner" class="chart-scrollbar-inner"></div>
         </div>
       </div>
     </main>

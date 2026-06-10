@@ -124,6 +124,21 @@ h1 {
   line-height: 0.96;
 }
 
+.version-badge {
+  display: inline-block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 0.25em 0.6em;
+  border-radius: 999px;
+  background: var(--accent, #6366f1);
+  color: #fff;
+  vertical-align: middle;
+  letter-spacing: 0.04em;
+  position: relative;
+  top: -0.15em;
+}
+
 h2 {
   font-size: 1.25rem;
 }
@@ -443,10 +458,60 @@ input[type="color"] {
 
 .gantt-board {
   position: relative;
-  overflow: auto;
+  overflow-x: auto;
+  overflow-y: hidden;
   border-radius: 22px;
   border: 1px solid var(--border);
   background: var(--chart-surface);
+  scrollbar-width: none;
+}
+
+.gantt-board::-webkit-scrollbar {
+  display: none;
+}
+
+.chart-scrollbar {
+  overflow-x: auto;
+  overflow-y: hidden;
+  height: 14px;
+  margin-top: auto;
+}
+
+.chart-scrollbar-inner {
+  height: 1px;
+}
+
+.chart-scrollbar::-webkit-scrollbar {
+  height: 6px;
+}
+
+.chart-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chart-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(35, 27, 22, 0.25);
+  border-radius: 999px;
+}
+
+.chart-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(35, 27, 22, 0.45);
+}
+
+.gantt-board::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  left: var(--timeline-offset, var(--label-column));
+  background: repeating-linear-gradient(
+    to right,
+    var(--chart-slot-even) 0,
+    var(--chart-slot-even) var(--day-width),
+    var(--chart-slot-odd) var(--day-width),
+    var(--chart-slot-odd) calc(2 * var(--day-width))
+  );
+  pointer-events: none;
+  z-index: 0;
 }
 
 .empty-state {
@@ -457,6 +522,7 @@ input[type="color"] {
 
 .gantt-grid {
   position: relative;
+  z-index: 1;
   min-width: fit-content;
 }
 
@@ -494,13 +560,25 @@ input[type="color"] {
   grid-template-columns: var(--label-column) repeat(var(--day-count), var(--day-width));
 }
 
-.gantt-grid.compact-dates .timeline-header,
+/* Header can have more columns than task rows to show phantom months in overflow */
+.timeline-header {
+  grid-template-columns: var(--label-column) repeat(var(--header-day-count, var(--day-count)), var(--day-width));
+}
+
 .gantt-grid.compact-dates .task-row {
   grid-template-columns:
     var(--label-column)
     var(--compact-start-column)
     var(--compact-end-column)
     repeat(var(--day-count), var(--day-width));
+}
+
+.gantt-grid.compact-dates .timeline-header {
+  grid-template-columns:
+    var(--label-column)
+    var(--compact-start-column)
+    var(--compact-end-column)
+    repeat(var(--header-day-count, var(--day-count)), var(--day-width));
 }
 
 .timeline-header {
@@ -1053,7 +1131,8 @@ button.compact-date-cell:hover {
   background: var(--chart-weekend);
 }
 
-.gantt-grid[data-chart-color-scheme="cool-grey"] {
+.gantt-grid[data-chart-color-scheme="cool-grey"],
+.gantt-board[data-chart-color-scheme="cool-grey"] {
   --chart-surface: linear-gradient(180deg, #eceff1 0%, #e3e7ea 100%);
   --chart-header-surface: rgba(241, 244, 246, 0.96);
   --chart-label-surface: rgba(241, 244, 246, 0.96);
@@ -1063,7 +1142,8 @@ button.compact-date-cell:hover {
   --chart-weekend: #dde2e6;
 }
 
-.gantt-grid[data-chart-color-scheme="striped-grey"] {
+.gantt-grid[data-chart-color-scheme="striped-grey"],
+.gantt-board[data-chart-color-scheme="striped-grey"] {
   --chart-surface: linear-gradient(180deg, #e7eaed 0%, #dde2e6 100%);
   --chart-header-surface: rgba(238, 241, 243, 0.98);
   --chart-label-surface: rgba(238, 241, 243, 0.98);
