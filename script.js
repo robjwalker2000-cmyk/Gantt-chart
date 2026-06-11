@@ -74,6 +74,8 @@ const state = {
   showDragHandles: true,
   showLabelOnly: false,
   showRelativeTimeline: false,
+  showTodayMarker: true,
+  showDurationColumn: false,
   chartColorScheme: "striped-grey",
   timelineModeOverride: null,
   editingPlanTitle: false,
@@ -108,6 +110,8 @@ const emptyState = document.getElementById("empty-state");
 const form = document.getElementById("task-form");
 const appShell = document.querySelector(".app-shell");
 const panelToggle = document.getElementById("panel-toggle");
+const ioMenuToggle = document.getElementById("io-menu-toggle");
+const ioMenu = document.getElementById("io-menu");
 const nameInput = document.getElementById("task-name");
 const startInput = document.getElementById("task-start");
 const endInput = document.getElementById("task-end");
@@ -115,7 +119,12 @@ const ownerInput = document.getElementById("task-owner");
 const colorInput = document.getElementById("task-color");
 const colorValue = document.getElementById("task-color-value");
 const taskColorSwatches = document.getElementById("task-color-swatches");
+const taskColorBtn = document.getElementById("task-color-btn");
+const taskColorPopup = document.getElementById("task-color-popup");
 const bgColorSwatches = document.getElementById("bg-color-swatches");
+const bgColorBtn = document.getElementById("bg-color-btn");
+const bgColorPopup = document.getElementById("bg-color-popup");
+const bgColorValue = document.getElementById("bg-color-value");
 const planForm = document.getElementById("plan-form");
 const planTitleInput = document.getElementById("plan-title");
 const planStartInput = document.getElementById("plan-start");
@@ -129,13 +138,18 @@ const showTaskMetaInput = document.getElementById("show-task-meta");
 const showDragHandlesInput = document.getElementById("show-drag-handles");
 const showLabelOnlyInput = document.getElementById("show-label-only");
 const showRelativeTimelineInput = document.getElementById("show-relative-timeline");
+const showTodayMarkerInput = document.getElementById("show-today-marker");
+const showDurationColumnInput = document.getElementById("show-duration-column");
 const chartColorSchemeInput = document.getElementById("chart-colour-scheme");
 const pageBgColorInput = document.getElementById("page-bg-color");
 const pageBgResetButton = document.getElementById("page-bg-reset");
-const planSettingsCard = document.getElementById("plan-settings-card");
-const planSettingsToggle = document.getElementById("plan-settings-toggle");
-const displaySettingsCard = document.getElementById("display-settings-card");
-const displaySettingsToggle = document.getElementById("display-settings-toggle");
+const addTaskToggle = document.getElementById("add-task-toggle");
+const addTaskPanel = document.getElementById("add-task-panel");
+const planPanelToggle = document.getElementById("plan-panel-toggle");
+const planSettingsPanel = document.getElementById("plan-settings-panel");
+const displayPanelToggle = document.getElementById("display-panel-toggle");
+const displaySettingsPanel = document.getElementById("display-settings-panel");
+const allTopBarPanels = [addTaskPanel, planSettingsPanel, displaySettingsPanel, ioMenu];
 const zoomOutButton = document.getElementById("zoom-out");
 const zoomInButton = document.getElementById("zoom-in");
 const zoomLabel = document.getElementById("zoom-label");
@@ -154,6 +168,106 @@ const pasteImportCancel = document.getElementById("paste-import-cancel");
 const pasteImportConfirm = document.getElementById("paste-import-confirm");
 const importCsvInput = document.getElementById("import-csv");
 
+const PRESET_TASK_COLOURS = [
+  "#ff7a59","#ef4444","#f97316","#eab308","#84cc16",
+  "#22c55e","#14b8a6","#06b6d4","#3b82f6","#8b5cf6",
+  "#ec4899","#f43f5e","#a16207","#166534","#1e40af",
+];
+
+let lastCustomTaskColour = "#6b21a8";
+
+function taskColours() {
+  return [...PRESET_TASK_COLOURS, lastCustomTaskColour];
+}
+
+function setLastCustomTaskColour(hex) {
+  lastCustomTaskColour = hex;
+  [taskColorSwatches, rowPickerSwatches].forEach(container => {
+    const last = container.querySelector(".color-swatch--custom");
+    if (last) { last.style.background = hex; last.title = hex; }
+  });
+}
+
+const PRESET_BG_COLOURS = [
+  "#f5ede4","#ffffff","#f8f9fa","#fef9c3","#dcfce7",
+  "#dbeafe","#fce7f3","#f3e8ff","#ffedd5","#e0f2fe",
+  "#1e293b","#111827","#422006","#14532d","#1e3a5f","#3b0764",
+];
+
+const STORAGE_KEY = "ganttChartState.v1";
+const PERSISTED_KEYS = [
+  "planStart", "planEnd", "planTitle", "zoom", "detailLevel",
+  "showCompactDates", "showTaskDates", "showTaskMeta", "showTaskBarLabels",
+  "showDragHandles", "showLabelOnly", "showRelativeTimeline", "showTodayMarker", "showDurationColumn",
+  "chartColorScheme", "timelineModeOverride",
+];
+
+function loadPersistedState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    if (Array.isArray(data.tasks)) state.tasks = data.tasks;
+    PERSISTED_KEYS.forEach((key) => {
+      if (data[key] !== undefined) state[key] = data[key];
+    });
+  } catch {
+    // Corrupt or unavailable storage — fall back to defaults
+  }
+}
+
+function snapshotState() {
+  return JSON.stringify({
+    tasks: state.tasks,
+    planStart: state.planStart,
+    planEnd: state.planEnd,
+    planTitle: state.planTitle,
+  });
+}
+
+const undoStack = [];
+let lastSnapshot = null;
+
+function persistAndTrackHistory() {
+  if (state.drag || state.rowDrag) return;
+  const snap = snapshotState();
+  if (lastSnapshot !== null && snap !== lastSnapshot) {
+    undoStack.push(lastSnapshot);
+    if (undoStack.length > 100) undoStack.shift();
+  }
+  lastSnapshot = snap;
+  try {
+    const data = { tasks: state.tasks };
+    PERSISTED_KEYS.forEach((key) => { data[key] = state[key]; });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch {
+    // Storage full or unavailable — keep working without persistence
+  }
+}
+
+function undoLastChange() {
+  if (!undoStack.length) return;
+  const snap = undoStack.pop();
+  const data = JSON.parse(snap);
+  state.tasks = data.tasks;
+  state.planStart = data.planStart;
+  state.planEnd = data.planEnd;
+  state.planTitle = data.planTitle;
+  lastSnapshot = snap;
+  initialisePlanDefaults();
+  render();
+}
+
+document.addEventListener("keydown", (e) => {
+  if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === "z") {
+    const el = document.activeElement;
+    if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)) return;
+    e.preventDefault();
+    undoLastChange();
+  }
+});
+
+loadPersistedState();
 initialiseFormDefaults();
 initialisePlanDefaults();
 initialiseZoom();
@@ -165,17 +279,24 @@ planHeading.addEventListener("click", () => {
   syncPlanHeading();
 });
 
-panelToggle.addEventListener("click", () => {
-  const collapsed = appShell.classList.toggle("panel-collapsed");
-  panelToggle.textContent = collapsed ? "Show panel" : "Hide panel";
-  panelToggle.setAttribute("aria-expanded", String(!collapsed));
-  const minZoom = getMinimumZoom();
-  if (state.zoom < minZoom) {
-    state.zoom = minZoom;
+function openTopBarPanel(panel) {
+  allTopBarPanels.forEach((p) => { if (p !== panel) p.hidden = true; });
+  panel.hidden = !panel.hidden;
+}
+
+addTaskToggle.addEventListener("click", (e) => { e.stopPropagation(); openTopBarPanel(addTaskPanel); });
+planPanelToggle.addEventListener("click", (e) => { e.stopPropagation(); openTopBarPanel(planSettingsPanel); });
+displayPanelToggle.addEventListener("click", (e) => { e.stopPropagation(); openTopBarPanel(displaySettingsPanel); });
+ioMenuToggle.addEventListener("click", (e) => { e.stopPropagation(); openTopBarPanel(ioMenu); });
+
+document.addEventListener("click", (e) => {
+  const inTopBar = e.target.closest(".top-bar-dropdown-wrap, .io-menu-wrap");
+  if (!inTopBar) allTopBarPanels.forEach((p) => { p.hidden = true; });
+  if (!e.target.closest(".color-picker-popup-wrap") && e.target !== rowColorPickerPopup && !rowColorPickerPopup.contains(e.target)) {
+    taskColorPopup.hidden = true;
+    bgColorPopup.hidden = true;
+    rowColorPickerPopup.hidden = true;
   }
-  syncLayoutVars();
-  syncZoomUi();
-  render();
 });
 
 window.addEventListener("resize", () => {
@@ -222,6 +343,7 @@ form.addEventListener("submit", (event) => {
   expandPlanToIncludeRange(toDate(start), toDate(end));
   initialisePlanDefaults();
 
+  addTaskPanel.hidden = true;
   form.reset();
   colorInput.value = color;
   colorValue.textContent = color.toLowerCase();
@@ -230,28 +352,20 @@ form.addEventListener("submit", (event) => {
 });
 
 colorInput.addEventListener("input", () => {
-  colorValue.textContent = colorInput.value.toLowerCase();
-  updateSwatchSelection(taskColorSwatches, colorInput.value);
+  const hex = colorInput.value.toLowerCase();
+  colorValue.textContent = hex;
+  taskColorBtn.style.background = hex;
+  setLastCustomTaskColour(hex);
+  updateSwatchSelection(taskColorSwatches, hex);
 });
-
-const PRESET_TASK_COLOURS = [
-  "#ff7a59","#ef4444","#f97316","#eab308","#84cc16",
-  "#22c55e","#14b8a6","#06b6d4","#3b82f6","#8b5cf6",
-  "#ec4899","#f43f5e","#a16207","#166534","#1e40af","#6b21a8",
-];
-
-const PRESET_BG_COLOURS = [
-  "#f5ede4","#ffffff","#f8f9fa","#fef9c3","#dcfce7",
-  "#dbeafe","#fce7f3","#f3e8ff","#ffedd5","#e0f2fe",
-  "#1e293b","#111827","#422006","#14532d","#1e3a5f","#3b0764",
-];
 
 function buildSwatches(container, colours, input, onPick) {
   container.innerHTML = "";
-  colours.forEach((hex) => {
+  colours.forEach((hex, i) => {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "color-swatch";
+    if (i === colours.length - 1) btn.classList.add("color-swatch--custom");
     btn.style.background = hex;
     btn.title = hex;
     if (hex.toLowerCase() === input.value.toLowerCase()) btn.classList.add("is-selected");
@@ -270,12 +384,99 @@ function updateSwatchSelection(container, hex) {
   });
 }
 
-buildSwatches(taskColorSwatches, PRESET_TASK_COLOURS, colorInput, (hex) => {
+buildSwatches(taskColorSwatches, taskColours(), colorInput, (hex) => {
   colorValue.textContent = hex;
+  taskColorBtn.style.background = hex;
+  taskColorPopup.hidden = true;
 });
 
 buildSwatches(bgColorSwatches, PRESET_BG_COLOURS, pageBgColorInput, (hex) => {
   boardCard.style.background = hex;
+  bgColorBtn.style.background = hex;
+  bgColorValue.textContent = hex;
+  bgColorPopup.hidden = true;
+});
+
+// Shared row colour picker popup — appended to body to escape stacking contexts
+const rowColorPickerPopup = document.createElement("div");
+rowColorPickerPopup.className = "color-picker-popup";
+rowColorPickerPopup.hidden = true;
+rowColorPickerPopup.style.cssText = "position:fixed;z-index:9999;width:232px;";
+const rowPickerSwatches = document.createElement("div");
+rowPickerSwatches.className = "color-swatches";
+const rowPickerCustomRow = document.createElement("div");
+rowPickerCustomRow.className = "color-picker-custom-row";
+const rowPickerNative = document.createElement("input");
+rowPickerNative.type = "color";
+rowPickerNative.setAttribute("aria-label", "Custom colour");
+const rowPickerValueSpan = document.createElement("span");
+rowPickerCustomRow.appendChild(rowPickerNative);
+rowPickerCustomRow.appendChild(rowPickerValueSpan);
+rowColorPickerPopup.appendChild(rowPickerSwatches);
+rowColorPickerPopup.appendChild(rowPickerCustomRow);
+document.body.appendChild(rowColorPickerPopup);
+
+let _rowPickerTaskRow = null;
+let _rowPickerBtn = null;
+
+function openRowColorPicker(btn, taskRow) {
+  if (_rowPickerBtn === btn && !rowColorPickerPopup.hidden) {
+    rowColorPickerPopup.hidden = true;
+    return;
+  }
+  _rowPickerTaskRow = taskRow;
+  _rowPickerBtn = btn;
+
+  rowPickerNative.value = taskRow.color;
+  rowPickerValueSpan.textContent = taskRow.color;
+
+  buildSwatches(rowPickerSwatches, taskColours(), rowPickerNative, (hex) => {
+    _rowPickerTaskRow.tasks.forEach(t => { t.color = hex; });
+    btn.style.background = hex;
+    rowPickerNative.value = hex;
+    rowPickerValueSpan.textContent = hex;
+    rowColorPickerPopup.hidden = true;
+    render();
+  });
+
+  rowColorPickerPopup.hidden = false;
+  const popupW = rowColorPickerPopup.offsetWidth || 232;
+  const popupH = rowColorPickerPopup.offsetHeight || 120;
+  const rect = btn.getBoundingClientRect();
+  const vw = document.documentElement.clientWidth;
+  // Right-align to button, clamped within viewport
+  let left = Math.min(rect.right - popupW, vw - popupW - 8);
+  left = Math.max(8, left);
+  // Open upward; if not enough room above, open downward
+  const top = rect.top >= popupH + 10
+    ? rect.top - popupH - 6
+    : rect.bottom + 6;
+  rowColorPickerPopup.style.left = left + "px";
+  rowColorPickerPopup.style.top = top + "px";
+}
+
+rowPickerNative.addEventListener("input", () => {
+  if (!_rowPickerTaskRow) return;
+  const hex = rowPickerNative.value;
+  _rowPickerTaskRow.tasks.forEach(t => { t.color = hex; });
+  if (_rowPickerBtn) _rowPickerBtn.style.background = hex;
+  rowPickerValueSpan.textContent = hex;
+  setLastCustomTaskColour(hex);
+  updateSwatchSelection(rowPickerSwatches, hex);
+  render();
+});
+
+// Colour picker popup toggle handlers
+taskColorBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  bgColorPopup.hidden = true;
+  taskColorPopup.hidden = !taskColorPopup.hidden;
+});
+
+bgColorBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  taskColorPopup.hidden = true;
+  bgColorPopup.hidden = !bgColorPopup.hidden;
 });
 
 planForm.addEventListener("submit", (event) => {
@@ -305,6 +506,7 @@ planForm.addEventListener("submit", (event) => {
   state.planTitle = nextPlanTitle;
   state.planStart = nextPlanStart;
   state.planEnd = nextPlanEnd;
+  planSettingsPanel.hidden = true;
   syncCompactDateControl();
   syncLayoutVars();
   render();
@@ -324,13 +526,6 @@ timelineLabelModeInput.addEventListener("change", () => {
   render();
 });
 
-planSettingsToggle.addEventListener("click", () => {
-  planSettingsCard.classList.toggle("is-collapsed");
-});
-
-displaySettingsToggle.addEventListener("click", () => {
-  displaySettingsCard.classList.toggle("is-collapsed");
-});
 
 showCompactDatesInput.addEventListener("change", () => {
   state.showCompactDates = showCompactDatesInput.checked;
@@ -377,6 +572,17 @@ showRelativeTimelineInput.addEventListener("change", () => {
   render();
 });
 
+showTodayMarkerInput.addEventListener("change", () => {
+  state.showTodayMarker = showTodayMarkerInput.checked;
+  render();
+});
+
+showDurationColumnInput.addEventListener("change", () => {
+  state.showDurationColumn = showDurationColumnInput.checked;
+  syncLayoutVars();
+  render();
+});
+
 chartColorSchemeInput.addEventListener("change", () => {
   state.chartColorScheme = chartColorSchemeInput.value;
   render();
@@ -384,12 +590,16 @@ chartColorSchemeInput.addEventListener("change", () => {
 
 pageBgColorInput.addEventListener("input", () => {
   boardCard.style.background = pageBgColorInput.value;
+  bgColorBtn.style.background = pageBgColorInput.value;
+  bgColorValue.textContent = pageBgColorInput.value;
   updateSwatchSelection(bgColorSwatches, pageBgColorInput.value);
 });
 
 pageBgResetButton.addEventListener("click", () => {
   boardCard.style.background = "";
   pageBgColorInput.value = "#f5ede4";
+  bgColorBtn.style.background = "#f5ede4";
+  bgColorValue.textContent = "#f5ede4";
   updateSwatchSelection(bgColorSwatches, "#f5ede4");
 });
 
@@ -445,6 +655,7 @@ copyChartImageButton.addEventListener("click", async () => {
 });
 
 pasteImportOpenButton.addEventListener("click", () => {
+  ioMenu.hidden = true;
   pasteImportTextarea.value = "";
   pasteImportModal.hidden = false;
   pasteImportTextarea.focus();
@@ -488,6 +699,7 @@ function initialiseFormDefaults(baseDate = formatInputDate(new Date())) {
   startInput.value = formatInputDate(startDate);
   endInput.value = formatInputDate(endDate);
   colorValue.textContent = colorInput.value.toLowerCase();
+  taskColorBtn.style.background = colorInput.value;
 }
 
 function initialisePlanDefaults() {
@@ -503,6 +715,8 @@ function initialisePlanDefaults() {
   showTaskMetaInput.checked = state.showTaskMeta;
   showLabelOnlyInput.checked = state.showLabelOnly;
   showRelativeTimelineInput.checked = state.showRelativeTimeline;
+  showTodayMarkerInput.checked = state.showTodayMarker;
+  showDurationColumnInput.checked = state.showDurationColumn;
   chartColorSchemeInput.value = state.chartColorScheme;
 }
 
@@ -512,6 +726,7 @@ function initialiseZoom() {
 }
 
 function render() {
+  persistAndTrackHistory();
   if (!state.tasks.length) {
     board.innerHTML = "";
     board.appendChild(emptyState);
@@ -531,6 +746,7 @@ function render() {
   }
   if (shouldShowCompactDates()) {
     grid.classList.add("compact-dates");
+    if (state.showDurationColumn) grid.classList.add("show-duration");
   }
   if (state.detailLevel === "compressed") {
     grid.classList.add("compressed-view");
@@ -710,6 +926,9 @@ function renderHeader(scale, timelineMode) {
   if (shouldShowCompactDates()) {
     header.appendChild(renderCompactDateHeaderCell("Start", "start"));
     header.appendChild(renderCompactDateHeaderCell("End", "end"));
+    if (state.showDurationColumn) {
+      header.appendChild(renderCompactDurationHeaderCell());
+    }
   }
 
   if (timelineMode === "month") {
@@ -810,6 +1029,20 @@ function renderCompactDateCell(taskRow, field) {
   return cell;
 }
 
+function renderCompactDurationHeaderCell() {
+  const cell = document.createElement("div");
+  cell.className = "compact-date-header compact-duration-header";
+  cell.textContent = "Days";
+  return cell;
+}
+
+function renderCompactDurationCell(taskRow) {
+  const cell = document.createElement("div");
+  cell.className = "compact-date-cell compact-duration-cell is-readonly";
+  cell.textContent = getDuration(taskRow.start, taskRow.end);
+  return cell;
+}
+
 function renderTaskRow(taskRow, scale, timelineStart, timelineMode, index) {
   const row = document.createElement("div");
   row.className = "task-row";
@@ -854,20 +1087,21 @@ function renderTaskRow(taskRow, scale, timelineStart, timelineMode, index) {
       taskInfo.appendChild(dateButton);
     }
 
-    const colorPickerWrap = document.createElement("label");
-    colorPickerWrap.className = "task-color-picker";
-    colorPickerWrap.title = "Change task color";
+    // Custom colour picker widget for task row
+    const colorPickerWrap = document.createElement("div");
+    colorPickerWrap.className = "task-color-picker color-picker-popup-wrap";
 
-    const taskColorInput = document.createElement("input");
-    taskColorInput.type = "color";
-    taskColorInput.value = taskRow.color;
-    taskColorInput.setAttribute("aria-label", `Change color for ${taskRow.name}`);
-    taskColorInput.addEventListener("input", (event) => {
-      taskRow.tasks.forEach((task) => {
-        task.color = event.target.value;
-      });
-      render();
+    const rowColorBtn = document.createElement("button");
+    rowColorBtn.type = "button";
+    rowColorBtn.className = "color-preview-btn task-color-preview";
+    rowColorBtn.style.background = taskRow.color;
+    rowColorBtn.setAttribute("aria-label", `Change color for ${taskRow.name}`);
+
+    rowColorBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      openRowColorPicker(rowColorBtn, taskRow);
     });
+    colorPickerWrap.appendChild(rowColorBtn);
 
     const ownerBadge = renderTaskOwnerControl(taskRow);
     const reorderHandle = document.createElement("button");
@@ -877,8 +1111,6 @@ function renderTaskRow(taskRow, scale, timelineStart, timelineMode, index) {
     reorderHandle.title = "Drag to reorder task";
     reorderHandle.textContent = "⋮⋮";
     reorderHandle.addEventListener("pointerdown", (event) => handleTaskReorderStart(event, taskRow.id));
-
-    colorPickerWrap.appendChild(taskColorInput);
     const labelChildren = [];
     if (state.showDragHandles && !state.showLabelOnly) labelChildren.push(reorderHandle);
     labelChildren.push(taskInfo, ownerBadge, colorPickerWrap);
@@ -889,6 +1121,9 @@ function renderTaskRow(taskRow, scale, timelineStart, timelineMode, index) {
   if (shouldShowCompactDates()) {
     row.appendChild(renderCompactDateCell(taskRow, "start"));
     row.appendChild(renderCompactDateCell(taskRow, "end"));
+    if (state.showDurationColumn) {
+      row.appendChild(renderCompactDurationCell(taskRow));
+    }
   }
 
   scale.forEach((slot) => {
@@ -900,6 +1135,9 @@ function renderTaskRow(taskRow, scale, timelineStart, timelineMode, index) {
     cell.classList.add(getYearShadeClass(getMonthStripeIndex(scale, slot, timelineMode)));
     row.appendChild(cell);
   });
+
+  const todayLayer = buildTodayMarkerLayer(scale);
+  if (todayLayer) row.appendChild(todayLayer);
 
   const layer = document.createElement("div");
   layer.className = "task-bar-layer";
@@ -916,9 +1154,13 @@ function renderTaskRow(taskRow, scale, timelineStart, timelineMode, index) {
     bar.style.left = task.milestone
       ? `${(taskPosition.centerUnits * getDayWidth()) - 12}px`
       : `${taskPosition.startUnits * getDayWidth()}px`;
-    bar.style.width = task.milestone
-      ? "24px"
-      : `${Math.max(taskPosition.widthUnits * getDayWidth(), 6)}px`;
+    const barWidth = task.milestone ? 24 : Math.max(taskPosition.widthUnits * getDayWidth(), 1);
+    bar.style.width = task.milestone ? "24px" : `${barWidth}px`;
+    if (!task.milestone && barWidth < 36) bar.classList.add("task-bar--narrow");
+    const durationDays = getDuration(task.start, task.end);
+    bar.title = task.milestone
+      ? `${task.name}\n${toDate(task.start).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`
+      : `${task.name}\n${formatRange(task.start, task.end)}\n${durationDays} day${durationDays === 1 ? "" : "s"}`;
     if (taskRow.tasks.length === 1) {
       bar.style.top = "50%";
       bar.style.transform = task.milestone ? "translateY(-50%) rotate(45deg)" : "translateY(-50%)";
@@ -974,6 +1216,21 @@ function renderTaskRow(taskRow, scale, timelineStart, timelineMode, index) {
   row.appendChild(layer);
 
   return row;
+}
+
+function buildTodayMarkerLayer(scale) {
+  if (!state.showTodayMarker || !scale.length) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  if (today < scale[0].start || today >= addDays(scale[scale.length - 1].end, 1)) return null;
+  const units = getDateUnitsWithinScale(today, scale);
+  const layer = document.createElement("div");
+  layer.className = "task-bar-layer today-layer";
+  const marker = document.createElement("div");
+  marker.className = "today-marker";
+  marker.style.left = `${units * getDayWidth()}px`;
+  layer.appendChild(marker);
+  return layer;
 }
 
 function handlePointerDown(event, taskId) {
@@ -1071,6 +1328,7 @@ function handlePointerUp(event) {
   window.removeEventListener("pointermove", handlePointerMove);
   window.removeEventListener("pointerup", handlePointerUp);
   window.removeEventListener("pointercancel", handlePointerUp);
+  render();
 }
 
 function handleTaskReorderStart(event, taskId) {
@@ -1327,7 +1585,8 @@ function syncLayoutVars() {
   document.documentElement.style.setProperty("--compact-start-column", `${state.compactStartColumnWidth}px`);
   document.documentElement.style.setProperty("--compact-end-column", `${state.compactEndColumnWidth}px`);
   const timelineOffset = getLabelColumnWidth()
-    + (shouldShowCompactDates() ? state.compactStartColumnWidth + state.compactEndColumnWidth : 0);
+    + (shouldShowCompactDates() ? state.compactStartColumnWidth + state.compactEndColumnWidth : 0)
+    + (state.showDurationColumn && shouldShowCompactDates() ? 60 : 0);
   document.documentElement.style.setProperty("--timeline-offset", `${timelineOffset}px`);
 }
 
@@ -1606,7 +1865,8 @@ function createChartExportSvgBlob() {
   const showCompactDates = shouldShowCompactDates();
   const compactStartWidth = showCompactDates ? state.compactStartColumnWidth : 0;
   const compactEndWidth = showCompactDates ? state.compactEndColumnWidth : 0;
-  const timelineX = labelWidth + compactStartWidth + compactEndWidth;
+  const compactDurationWidth = (showCompactDates && state.showDurationColumn) ? 60 : 0;
+  const timelineX = labelWidth + compactStartWidth + compactEndWidth + compactDurationWidth;
   const timelineWidth = scale.length * dayWidth;
   const headerHeight = timelineMode === "month" ? 92 : 56;
   const totalHeight = headerHeight + taskRows.reduce((sum, taskRow) => sum + getTaskRowHeight(taskRow.tasks.length), 0);
@@ -1728,7 +1988,7 @@ function createChartExportSvgBlob() {
       const x = task.milestone
         ? timelineX + (taskPosition.centerUnits * dayWidth) - 12
         : timelineX + (taskPosition.startUnits * dayWidth);
-      const width = task.milestone ? 24 : Math.max(taskPosition.widthUnits * dayWidth, 6);
+      const width = task.milestone ? 24 : Math.max(taskPosition.widthUnits * dayWidth, 1);
       const y = taskRow.tasks.length === 1
         ? rowY + ((rowHeight - taskBarHeight) / 2)
         : rowY + barLayerTop + (taskIndex * getTaskBarStep());
@@ -2485,7 +2745,9 @@ function buildExcelHtml(scale, timelineHeaders, timelineMode) {
 }
 
 function importTasksFromCsv(text) {
-  const rows = parseCsv(text);
+  // Strip UTF-8 BOM added by Excel on Windows
+  const cleanText = text.replace(/^﻿/, "");
+  const rows = parseCsv(cleanText);
   if (rows.length < 2) {
     window.alert("The CSV file is empty.");
     return;
@@ -3278,7 +3540,8 @@ function getYearBandIndex(scale, slot, timelineMode) {
 }
 
 function getTimelineGridStartColumn() {
-  return shouldShowCompactDates() ? 4 : 2;
+  if (!shouldShowCompactDates()) return 2;
+  return state.showDurationColumn ? 5 : 4;
 }
 
 function getMonthStripeIndex(scale, slot, timelineMode) {
@@ -3329,6 +3592,10 @@ function addYears(date, amount) {
 }
 
 function parseCsv(text) {
+  // Auto-detect delimiter: use semicolon if it appears more than comma in the first line
+  const firstLine = text.split(/\r?\n/)[0] || "";
+  const delimiter = (firstLine.split(";").length > firstLine.split(",").length) ? ";" : ",";
+
   const rows = [];
   let row = [];
   let value = "";
@@ -3348,7 +3615,7 @@ function parseCsv(text) {
       continue;
     }
 
-    if (char === "," && !inQuotes) {
+    if (char === delimiter && !inQuotes) {
       row.push(value);
       value = "";
       continue;
