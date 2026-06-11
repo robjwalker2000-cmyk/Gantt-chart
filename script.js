@@ -71,6 +71,7 @@ const state = {
   showTaskDates: true,
   showTaskMeta: true,
   showTaskBarLabels: true,
+  showDragHandles: true,
   showLabelOnly: false,
   showRelativeTimeline: false,
   chartColorScheme: "striped-grey",
@@ -123,11 +124,16 @@ const showCompactDatesInput = document.getElementById("show-compact-dates");
 const showTaskDatesInput = document.getElementById("show-task-dates");
 const showTaskBarLabelsInput = document.getElementById("show-task-bar-labels");
 const showTaskMetaInput = document.getElementById("show-task-meta");
+const showDragHandlesInput = document.getElementById("show-drag-handles");
 const showLabelOnlyInput = document.getElementById("show-label-only");
 const showRelativeTimelineInput = document.getElementById("show-relative-timeline");
 const chartColorSchemeInput = document.getElementById("chart-colour-scheme");
 const pageBgColorInput = document.getElementById("page-bg-color");
 const pageBgResetButton = document.getElementById("page-bg-reset");
+const planSettingsCard = document.getElementById("plan-settings-card");
+const planSettingsToggle = document.getElementById("plan-settings-toggle");
+const displaySettingsCard = document.getElementById("display-settings-card");
+const displaySettingsToggle = document.getElementById("display-settings-toggle");
 const zoomOutButton = document.getElementById("zoom-out");
 const zoomInButton = document.getElementById("zoom-in");
 const zoomLabel = document.getElementById("zoom-label");
@@ -247,15 +253,6 @@ planForm.addEventListener("submit", (event) => {
   state.planTitle = nextPlanTitle;
   state.planStart = nextPlanStart;
   state.planEnd = nextPlanEnd;
-  state.detailLevel = detailLevelInput.value;
-  state.timelineModeOverride = timelineLabelModeInput.value === "auto" ? null : timelineLabelModeInput.value;
-  state.showCompactDates = showCompactDatesInput.checked;
-  state.showTaskDates = showTaskDatesInput.checked;
-  state.showTaskBarLabels = showTaskBarLabelsInput.checked;
-  state.showTaskMeta = showTaskMetaInput.checked;
-  state.showLabelOnly = showLabelOnlyInput.checked;
-  state.showRelativeTimeline = showRelativeTimelineInput.checked;
-  state.chartColorScheme = chartColorSchemeInput.value;
   syncCompactDateControl();
   syncLayoutVars();
   render();
@@ -270,6 +267,19 @@ detailLevelInput.addEventListener("change", () => {
   render();
 });
 
+timelineLabelModeInput.addEventListener("change", () => {
+  state.timelineModeOverride = timelineLabelModeInput.value === "auto" ? null : timelineLabelModeInput.value;
+  render();
+});
+
+planSettingsToggle.addEventListener("click", () => {
+  planSettingsCard.classList.toggle("is-collapsed");
+});
+
+displaySettingsToggle.addEventListener("click", () => {
+  displaySettingsCard.classList.toggle("is-collapsed");
+});
+
 showCompactDatesInput.addEventListener("change", () => {
   state.showCompactDates = showCompactDatesInput.checked;
   render();
@@ -282,6 +292,11 @@ showTaskDatesInput.addEventListener("change", () => {
 
 showTaskBarLabelsInput.addEventListener("change", () => {
   state.showTaskBarLabels = showTaskBarLabelsInput.checked;
+  render();
+});
+
+showDragHandlesInput.addEventListener("change", () => {
+  state.showDragHandles = showDragHandlesInput.checked;
   render();
 });
 
@@ -424,6 +439,7 @@ function initialisePlanDefaults() {
   showCompactDatesInput.checked = state.showCompactDates;
   showTaskDatesInput.checked = state.showTaskDates;
   showTaskBarLabelsInput.checked = state.showTaskBarLabels;
+  showDragHandlesInput.checked = state.showDragHandles;
   showTaskMetaInput.checked = state.showTaskMeta;
   showLabelOnlyInput.checked = state.showLabelOnly;
   showRelativeTimelineInput.checked = state.showRelativeTimeline;
@@ -465,7 +481,6 @@ function render() {
   grid.style.setProperty("--day-count", scale.length);
 
   grid.appendChild(renderHeader(scale, timelineMode));
-  grid.appendChild(renderLabelResizer());
 
   const taskRows = buildTaskRows();
 
@@ -629,6 +644,7 @@ function renderHeader(scale, timelineMode) {
   if (state.showTaskMeta || state.showLabelOnly) {
     cornerCell.innerHTML = `<div class="eyebrow">Tasks</div>`;
   }
+  cornerCell.appendChild(renderLabelResizer());
   header.appendChild(cornerCell);
 
   if (shouldShowCompactDates()) {
@@ -803,7 +819,10 @@ function renderTaskRow(taskRow, scale, timelineStart, timelineMode, index) {
     reorderHandle.addEventListener("pointerdown", (event) => handleTaskReorderStart(event, taskRow.id));
 
     colorPickerWrap.appendChild(taskColorInput);
-    label.append(reorderHandle, taskInfo, ownerBadge, colorPickerWrap);
+    const labelChildren = [];
+    if (state.showDragHandles && !state.showLabelOnly) labelChildren.push(reorderHandle);
+    labelChildren.push(taskInfo, ownerBadge, colorPickerWrap);
+    label.append(...labelChildren);
   }
   row.appendChild(label);
 
@@ -878,14 +897,15 @@ function renderTaskRow(taskRow, scale, timelineStart, timelineMode, index) {
       removeTask(task.id);
     });
 
+    const hideHandles = state.showLabelOnly || !state.showDragHandles;
     if (!task.milestone) {
-      if (state.showLabelOnly) {
+      if (hideHandles) {
         bar.append(labelText);
       } else {
         bar.append(startHandle, labelText, endHandle, deleteButton);
       }
     } else {
-      if (!state.showLabelOnly) bar.append(deleteButton);
+      if (!hideHandles) bar.append(deleteButton);
       bar.prepend(labelText);
     }
     bar.addEventListener("pointerdown", (event) => handlePointerDown(event, task.id));
@@ -1145,8 +1165,8 @@ function getTaskRowHeight(taskCount) {
 }
 
 function getLabelColumnWidth() {
-  if (state.showLabelOnly) return Math.min(state.labelColumnWidth, 180);
-  return state.showTaskMeta ? state.labelColumnWidth : 28;
+  if (!state.showTaskMeta && !state.showLabelOnly) return 28;
+  return state.labelColumnWidth;
 }
 
 function getTimelineRange() {
@@ -1555,8 +1575,7 @@ function createChartExportSvgBlob() {
 
   if (state.showTaskMeta) {
     svgParts.push(
-      `<text x="20" y="22" font-family="Arial, sans-serif" font-size="11" font-weight="700" letter-spacing="1.4" fill="${scheme.muted}">TASKS</text>`,
-      `<text x="20" y="46" font-family="Arial, sans-serif" font-size="16" font-weight="700" fill="${scheme.text}">${escapeHtml(`${scale.length} ${timelineMode} slots`)}</text>`
+      `<text x="20" y="34" font-family="Arial, sans-serif" font-size="11" font-weight="700" letter-spacing="1.4" fill="${scheme.muted}">TASKS</text>`
     );
   }
 
@@ -1664,11 +1683,14 @@ function createChartExportSvgBlob() {
           `<polygon points="${cx},${y} ${x + 24},${cy} ${cx},${y + 24} ${x},${cy}" fill="${color}"/>`
         );
       } else {
-        svgParts.push(
-          `<rect x="${x}" y="${y}" width="${width}" height="${taskBarHeight}" rx="${taskBarHeight / 2}" fill="${color}"/>`,
-          `<circle cx="${x + 10}" cy="${y + (taskBarHeight / 2)}" r="5" fill="rgba(255,255,255,0.92)"/>`,
-          `<circle cx="${x + width - 10}" cy="${y + (taskBarHeight / 2)}" r="5" fill="rgba(255,255,255,0.92)"/>`
-        );
+        const barParts = [`<rect x="${x}" y="${y}" width="${width}" height="${taskBarHeight}" rx="${taskBarHeight / 2}" fill="${color}"/>`];
+        if (state.showDragHandles && !state.showLabelOnly) {
+          barParts.push(
+            `<circle cx="${x + 10}" cy="${y + (taskBarHeight / 2)}" r="5" fill="rgba(255,255,255,0.92)"/>`,
+            `<circle cx="${x + width - 10}" cy="${y + (taskBarHeight / 2)}" r="5" fill="rgba(255,255,255,0.92)"/>`
+          );
+        }
+        svgParts.push(...barParts);
       }
 
       if (!labelHidden) {
@@ -2216,15 +2238,23 @@ function getMinimalThemeXml() {
     <a:fmtScheme name="Office">
       <a:fillStyleLst>
         <a:solidFill><a:schemeClr val="phClr"/></a:solidFill>
+        <a:gradFill rotWithShape="1"><a:gsLst><a:gs pos="0"><a:schemeClr val="phClr"><a:tint val="50000"/></a:schemeClr></a:gs><a:gs pos="100000"><a:schemeClr val="phClr"/></a:gs></a:gsLst><a:lin ang="16200000" scaled="0"/></a:gradFill>
+        <a:gradFill rotWithShape="1"><a:gsLst><a:gs pos="0"><a:schemeClr val="phClr"><a:shade val="50000"/></a:schemeClr></a:gs><a:gs pos="100000"><a:schemeClr val="phClr"/></a:gs></a:gsLst><a:lin ang="16200000" scaled="0"/></a:gradFill>
       </a:fillStyleLst>
       <a:lnStyleLst>
         <a:ln w="9525" cap="flat" cmpd="sng" algn="ctr"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln>
+        <a:ln w="25400" cap="flat" cmpd="sng" algn="ctr"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln>
+        <a:ln w="38100" cap="flat" cmpd="sng" algn="ctr"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln>
       </a:lnStyleLst>
       <a:effectStyleLst>
         <a:effectStyle><a:effectLst/></a:effectStyle>
+        <a:effectStyle><a:effectLst/></a:effectStyle>
+        <a:effectStyle><a:effectLst><a:outerShdw blurRad="40000" dist="23000" dir="5400000" rotWithShape="0"><a:srgbClr val="000000"><a:alpha val="35000"/></a:srgbClr></a:outerShdw></a:effectLst></a:effectStyle>
       </a:effectStyleLst>
       <a:bgFillStyleLst>
         <a:solidFill><a:schemeClr val="phClr"/></a:solidFill>
+        <a:gradFill rotWithShape="1"><a:gsLst><a:gs pos="0"><a:schemeClr val="phClr"><a:tint val="40000"/></a:schemeClr></a:gs><a:gs pos="100000"><a:schemeClr val="phClr"/></a:gs></a:gsLst><a:lin ang="16200000" scaled="0"/></a:gradFill>
+        <a:gradFill rotWithShape="1"><a:gsLst><a:gs pos="0"><a:schemeClr val="phClr"><a:shade val="20000"/></a:schemeClr></a:gs><a:gs pos="100000"><a:schemeClr val="phClr"/></a:gs></a:gsLst><a:lin ang="16200000" scaled="0"/></a:gradFill>
       </a:bgFillStyleLst>
     </a:fmtScheme>
   </a:themeElements>
@@ -2423,8 +2453,8 @@ function importTasksFromCsv(text) {
   const completeIndex = headers.indexOf("complete");
   const milestoneIndex = headers.indexOf("milestone");
 
-  if (nameIndex === -1 || startIndex === -1 || endIndex === -1 || colorIndex === -1) {
-    window.alert("CSV must contain name, start, end, and color columns.");
+  if (nameIndex === -1 || startIndex === -1 || endIndex === -1) {
+    window.alert("CSV must contain name, start, and end columns.");
     return;
   }
 
@@ -2433,10 +2463,10 @@ function importTasksFromCsv(text) {
     .map((row) => ({
       id: crypto.randomUUID(),
       name: (row[nameIndex] || "").trim(),
-      start: (row[startIndex] || "").trim(),
-      end: (row[endIndex] || "").trim(),
+      start: normaliseCsvDate((row[startIndex] || "").trim()),
+      end: normaliseCsvDate((row[endIndex] || "").trim()),
       owner: normaliseOwner(row[ownerIndex] || ""),
-      color: normaliseColor((row[colorIndex] || "").trim()),
+      color: normaliseColor(colorIndex !== -1 ? (row[colorIndex] || "").trim() : "#ff7a59"),
       complete: parseCompleteValue(row[completeIndex]),
       milestone: parseCompleteValue(row[milestoneIndex]),
     }));
@@ -2761,7 +2791,7 @@ function handleLabelResizeStart(event) {
   resizer.classList.add("is-dragging");
 
   function handleMove(moveEvent) {
-    state.labelColumnWidth = clamp(originWidth + (moveEvent.clientX - originX), 220, 640);
+    state.labelColumnWidth = clamp(originWidth + (moveEvent.clientX - originX), 80, 800);
     syncLayoutVars();
     render();
   }
@@ -3263,6 +3293,23 @@ function escapeCsvValue(value) {
 
 function isIsoDate(value) {
   return /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
+function normaliseCsvDate(value) {
+  // yyyy/mm/dd or yyyy-mm-dd
+  let m = value.match(/^(\d{4})[-/](\d{2})[-/](\d{2})$/);
+  if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+  // dd/mm/yyyy or dd-mm-yyyy
+  m = value.match(/^(\d{2})[-/](\d{2})[-/](\d{4})$/);
+  if (m) return `${m[3]}-${m[2]}-${m[1]}`;
+  // dd/mm/yy or dd-mm-yy
+  m = value.match(/^(\d{2})[-/](\d{2})[-/](\d{2})$/);
+  if (m) {
+    const year = parseInt(m[3], 10);
+    const fullYear = year < 50 ? 2000 + year : 1900 + year;
+    return `${fullYear}-${m[2]}-${m[1]}`;
+  }
+  return value;
 }
 
 function normaliseColor(value) {

@@ -7,7 +7,14 @@
       "Skill(run:*)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://127.0.0.1:3456/index.html)",
       "Bash(xargs kill -9)",
-      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://127.0.0.1:3456/)"
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://127.0.0.1:3456/)",
+      "Read(//Users/rob/Library/Application Support/Claude/local-agent-mode-sessions/skills-plugin/5ffeab03-c8e3-4321-b713-1610a2fd4de4/101df856-de6f-4054-887b-1b5a2418f22f/skills/pptx/**)",
+      "Bash(python scripts/office/unpack.py \"/Users/rob/Downloads/gantt-chart-2.pptx\" /tmp/gantt-pptx-unpacked/)",
+      "Bash(python3 \"/Users/rob/Library/Application Support/Claude/local-agent-mode-sessions/skills-plugin/5ffeab03-c8e3-4321-b713-1610a2fd4de4/101df856-de6f-4054-887b-1b5a2418f22f/skills/pptx/scripts/office/unpack.py\" \"/Users/rob/Downloads/gantt-chart-2.pptx\" /tmp/gantt-pptx-unpacked/)",
+      "Bash(cp \"/Users/rob/Downloads/gantt-chart-2.pptx\" gantt-chart-2.zip)",
+      "Bash(unzip -o gantt-chart-2.zip -d gantt-pptx-unpacked/)",
+      "Bash(xmllint --noout /tmp/gantt-pptx-unpacked/ppt/slides/slide1.xml)",
+      "Bash(xmllint --noout /tmp/gantt-pptx-unpacked/ppt/presentation.xml)"
     ]
   }
 }
