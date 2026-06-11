@@ -24,7 +24,7 @@
 
       <div id="controls-panel-content" class="controls-panel-content">
         <div class="panel-card hero-card">
-          <h1 class="hero-title">Interactive Gantt Chart <span class="version-badge">v0.4</span></h1>
+          <h1 class="hero-title">Interactive Gantt Chart <span class="version-badge">v0.5</span></h1>
         </div>
 
         <form id="task-form" class="panel-card task-form">
@@ -57,6 +57,7 @@
                 <input id="task-color" name="taskColor" type="color" value="#ff7a59" aria-label="Choose task color">
                 <span id="task-color-value">#ff7a59</span>
               </div>
+              <div class="color-swatches" id="task-color-swatches"></div>
             </label>
 
             <button type="submit" class="primary-button task-add-button">Add</button>
@@ -188,6 +189,7 @@
                   <input id="page-bg-color" name="pageBgColor" type="color" value="#f5ede4" aria-label="Choose panel background colour">
                   <button id="page-bg-reset" type="button" class="secondary-button">Reset</button>
                 </div>
+                <div class="color-swatches" id="bg-color-swatches"></div>
               </div>
             </div>
           </div>
@@ -200,7 +202,7 @@
             <button id="export-excel" type="button" class="secondary-button wide-button">Export Excel</button>
             <button id="export-ppt" type="button" class="secondary-button wide-button">Export PPT</button>
             <button id="copy-chart-image" type="button" class="secondary-button wide-button">Copy Chart Image</button>
-            <button id="import-clipboard" type="button" class="secondary-button wide-button">Import Clipboard</button>
+            <button id="paste-import-open" type="button" class="secondary-button wide-button">Paste / Type Import</button>
             <label class="secondary-button wide-button file-input-label">
               Import CSV
               <input id="import-csv" type="file" accept=".csv,text/csv">
@@ -263,6 +265,18 @@
         </div>
       </div>
     </main>
+  </div>
+
+  <div id="paste-import-modal" class="modal-overlay" hidden>
+    <div class="modal-card">
+      <h3 class="modal-title">Paste or type tasks</h3>
+      <p class="modal-hint">One task per line: <code>Name, start, end</code> — dates like 1-6-26, 01/06/2026, or 2026-06-01 all work. A header row is optional.</p>
+      <textarea id="paste-import-textarea" class="paste-import-textarea" rows="10" placeholder="Project Kickoff, 1-6-26, 30-6-26&#10;Design Phase, 1-7-26, 20-7-26&#10;Build, 21-7-26, 30-9-26"></textarea>
+      <div class="modal-actions">
+        <button id="paste-import-cancel" type="button" class="secondary-button">Cancel</button>
+        <button id="paste-import-confirm" type="button" class="primary-button">Import</button>
+      </div>
+    </div>
   </div>
 
   <script src="script.js"></script>

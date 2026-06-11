@@ -114,6 +114,8 @@ const endInput = document.getElementById("task-end");
 const ownerInput = document.getElementById("task-owner");
 const colorInput = document.getElementById("task-color");
 const colorValue = document.getElementById("task-color-value");
+const taskColorSwatches = document.getElementById("task-color-swatches");
+const bgColorSwatches = document.getElementById("bg-color-swatches");
 const planForm = document.getElementById("plan-form");
 const planTitleInput = document.getElementById("plan-title");
 const planStartInput = document.getElementById("plan-start");
@@ -144,7 +146,12 @@ const exportCsvButton = document.getElementById("export-csv");
 const exportExcelButton = document.getElementById("export-excel");
 const exportPptButton = document.getElementById("export-ppt");
 const copyChartImageButton = document.getElementById("copy-chart-image");
-const importClipboardButton = document.getElementById("import-clipboard");
+const boardCard = document.querySelector(".board-card");
+const pasteImportOpenButton = document.getElementById("paste-import-open");
+const pasteImportModal = document.getElementById("paste-import-modal");
+const pasteImportTextarea = document.getElementById("paste-import-textarea");
+const pasteImportCancel = document.getElementById("paste-import-cancel");
+const pasteImportConfirm = document.getElementById("paste-import-confirm");
 const importCsvInput = document.getElementById("import-csv");
 
 initialiseFormDefaults();
@@ -224,6 +231,51 @@ form.addEventListener("submit", (event) => {
 
 colorInput.addEventListener("input", () => {
   colorValue.textContent = colorInput.value.toLowerCase();
+  updateSwatchSelection(taskColorSwatches, colorInput.value);
+});
+
+const PRESET_TASK_COLOURS = [
+  "#ff7a59","#ef4444","#f97316","#eab308","#84cc16",
+  "#22c55e","#14b8a6","#06b6d4","#3b82f6","#8b5cf6",
+  "#ec4899","#f43f5e","#a16207","#166534","#1e40af","#6b21a8",
+];
+
+const PRESET_BG_COLOURS = [
+  "#f5ede4","#ffffff","#f8f9fa","#fef9c3","#dcfce7",
+  "#dbeafe","#fce7f3","#f3e8ff","#ffedd5","#e0f2fe",
+  "#1e293b","#111827","#422006","#14532d","#1e3a5f","#3b0764",
+];
+
+function buildSwatches(container, colours, input, onPick) {
+  container.innerHTML = "";
+  colours.forEach((hex) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "color-swatch";
+    btn.style.background = hex;
+    btn.title = hex;
+    if (hex.toLowerCase() === input.value.toLowerCase()) btn.classList.add("is-selected");
+    btn.addEventListener("click", () => {
+      input.value = hex;
+      onPick(hex);
+      updateSwatchSelection(container, hex);
+    });
+    container.appendChild(btn);
+  });
+}
+
+function updateSwatchSelection(container, hex) {
+  container.querySelectorAll(".color-swatch").forEach((btn) => {
+    btn.classList.toggle("is-selected", btn.title.toLowerCase() === hex.toLowerCase());
+  });
+}
+
+buildSwatches(taskColorSwatches, PRESET_TASK_COLOURS, colorInput, (hex) => {
+  colorValue.textContent = hex;
+});
+
+buildSwatches(bgColorSwatches, PRESET_BG_COLOURS, pageBgColorInput, (hex) => {
+  boardCard.style.background = hex;
 });
 
 planForm.addEventListener("submit", (event) => {
@@ -330,15 +382,15 @@ chartColorSchemeInput.addEventListener("change", () => {
   render();
 });
 
-const boardCard = document.querySelector(".board-card");
-
 pageBgColorInput.addEventListener("input", () => {
   boardCard.style.background = pageBgColorInput.value;
+  updateSwatchSelection(bgColorSwatches, pageBgColorInput.value);
 });
 
 pageBgResetButton.addEventListener("click", () => {
   boardCard.style.background = "";
   pageBgColorInput.value = "#f5ede4";
+  updateSwatchSelection(bgColorSwatches, "#f5ede4");
 });
 
 zoomOutButton.addEventListener("click", () => {
@@ -392,17 +444,25 @@ copyChartImageButton.addEventListener("click", async () => {
   await copyChartImageToClipboard();
 });
 
-importClipboardButton.addEventListener("click", async () => {
-  try {
-    const text = await navigator.clipboard.readText();
-    if (!text.trim()) {
-      window.alert("Clipboard is empty.");
-      return;
-    }
-    importTasksFromCsv(text);
-  } catch (error) {
-    window.alert("Clipboard import is unavailable. Your browser may require clipboard permission.");
-  }
+pasteImportOpenButton.addEventListener("click", () => {
+  pasteImportTextarea.value = "";
+  pasteImportModal.hidden = false;
+  pasteImportTextarea.focus();
+});
+
+pasteImportCancel.addEventListener("click", () => {
+  pasteImportModal.hidden = true;
+});
+
+pasteImportModal.addEventListener("click", (e) => {
+  if (e.target === pasteImportModal) pasteImportModal.hidden = true;
+});
+
+pasteImportConfirm.addEventListener("click", () => {
+  const text = pasteImportTextarea.value.trim();
+  if (!text) { window.alert("Nothing to import."); return; }
+  pasteImportModal.hidden = true;
+  importTasksFromCsv(text);
 });
 
 importCsvInput.addEventListener("change", async (event) => {
@@ -2444,48 +2504,80 @@ function importTasksFromCsv(text) {
     return;
   }
 
-  const headers = rows[rowOffset].map((header) => header.trim().toLowerCase());
-  const nameIndex = headers.indexOf("name");
-  const startIndex = headers.indexOf("start");
-  const endIndex = headers.indexOf("end");
-  const ownerIndex = headers.indexOf("owner");
-  const colorIndex = headers.indexOf("color");
-  const completeIndex = headers.indexOf("complete");
-  const milestoneIndex = headers.indexOf("milestone");
+  const NAME_ALIASES   = ["name", "task", "task name", "title", "description", "item"];
+  const START_ALIASES  = ["start", "start date", "startdate", "from", "begin", "begins"];
+  const END_ALIASES    = ["end", "end date", "enddate", "to", "finish", "due", "finishes", "deadline"];
+  const OWNER_ALIASES  = ["owner", "initials", "assigned", "assignee", "responsible"];
+  const COLOR_ALIASES  = ["color", "colour"];
+  const COMPLETE_ALIASES = ["complete", "completion", "progress", "done", "%"];
+  const MILESTONE_ALIASES = ["milestone"];
+
+  function findCol(headers, aliases) {
+    for (const h of headers) {
+      const idx = aliases.indexOf(h);
+      if (idx !== -1) return headers.indexOf(h);
+      // partial match — header contains alias word
+      const found = aliases.find((a) => h.includes(a));
+      if (found) return headers.indexOf(h);
+    }
+    return -1;
+  }
+
+  // Detect whether first non-plan row is a header or data.
+  // A row is a header only if it contains recognisable column keywords AND
+  // none of its cells parse as a date (ruling out task names that match aliases like "task").
+  const candidateRow = rows[rowOffset].map((h) => h.trim().toLowerCase());
+  const ALL_ALIASES = [...NAME_ALIASES, ...START_ALIASES, ...END_ALIASES];
+  const hasKeyword = candidateRow.some((h) => ALL_ALIASES.includes(h) || ALL_ALIASES.some((a) => h.includes(a)));
+  const hasDateCell = candidateRow.some((h) => isIsoDate(normaliseCsvDate(h)));
+  const looksLikeHeader = hasKeyword && !hasDateCell;
+
+  let nameIndex, startIndex, endIndex, ownerIndex, colorIndex, completeIndex, milestoneIndex, dataOffset;
+
+  if (looksLikeHeader) {
+    const headers = candidateRow;
+    nameIndex      = findCol(headers, NAME_ALIASES);
+    startIndex     = findCol(headers, START_ALIASES);
+    endIndex       = findCol(headers, END_ALIASES);
+    ownerIndex     = findCol(headers, OWNER_ALIASES);
+    colorIndex     = findCol(headers, COLOR_ALIASES);
+    completeIndex  = findCol(headers, COMPLETE_ALIASES);
+    milestoneIndex = findCol(headers, MILESTONE_ALIASES);
+    dataOffset     = rowOffset + 1;
+  } else {
+    // No header — assume positional: name, start, end [, owner, color]
+    nameIndex = 0; startIndex = 1; endIndex = 2;
+    ownerIndex = 3; colorIndex = 4; completeIndex = -1; milestoneIndex = -1;
+    dataOffset = rowOffset;
+  }
 
   if (nameIndex === -1 || startIndex === -1 || endIndex === -1) {
-    window.alert("CSV must contain name, start, and end columns.");
+    window.alert("Could not find name, start, and end columns. Please check your CSV.");
     return;
   }
 
-  const tasks = rows.slice(rowOffset + 1)
+  const tasks = rows.slice(dataOffset)
     .filter((row) => row.some((value) => value.trim() !== ""))
-    .map((row) => ({
-      id: crypto.randomUUID(),
-      name: (row[nameIndex] || "").trim(),
-      start: normaliseCsvDate((row[startIndex] || "").trim()),
-      end: normaliseCsvDate((row[endIndex] || "").trim()),
-      owner: normaliseOwner(row[ownerIndex] || ""),
-      color: normaliseColor(colorIndex !== -1 ? (row[colorIndex] || "").trim() : "#ff7a59"),
-      complete: parseCompleteValue(row[completeIndex]),
-      milestone: parseCompleteValue(row[milestoneIndex]),
-    }));
+    .map((row) => {
+      const name  = (row[nameIndex]  || "").trim();
+      const start = normaliseCsvDate((row[startIndex] || "").trim());
+      const end   = normaliseCsvDate((row[endIndex]   || "").trim());
+      if (!name || !isIsoDate(start) || !isIsoDate(end)) return null;
+      return {
+        id: crypto.randomUUID(),
+        name,
+        start,
+        end: toDate(end) >= toDate(start) ? end : start,
+        owner: normaliseOwner(row[ownerIndex] || ""),
+        color: normaliseColor(colorIndex !== -1 ? (row[colorIndex] || "").trim() : "#ff7a59"),
+        complete: parseCompleteValue(row[completeIndex]),
+        milestone: parseCompleteValue(row[milestoneIndex]),
+      };
+    })
+    .filter(Boolean);
 
   if (!tasks.length) {
     window.alert("No valid task rows were found in the CSV.");
-    return;
-  }
-
-  const hasInvalidTask = tasks.some((task) => {
-    return !task.name
-      || !isIsoDate(task.start)
-      || !isIsoDate(task.end)
-      || toDate(task.start) > toDate(task.end)
-      || (task.milestone && task.start !== task.end);
-  });
-
-  if (hasInvalidTask) {
-    window.alert("Each task must have a name, valid start/end dates, and milestones must use the same start and end date.");
     return;
   }
 
@@ -3296,18 +3388,18 @@ function isIsoDate(value) {
 }
 
 function normaliseCsvDate(value) {
-  // yyyy/mm/dd or yyyy-mm-dd
-  let m = value.match(/^(\d{4})[-/](\d{2})[-/](\d{2})$/);
-  if (m) return `${m[1]}-${m[2]}-${m[3]}`;
-  // dd/mm/yyyy or dd-mm-yyyy
-  m = value.match(/^(\d{2})[-/](\d{2})[-/](\d{4})$/);
-  if (m) return `${m[3]}-${m[2]}-${m[1]}`;
-  // dd/mm/yy or dd-mm-yy
-  m = value.match(/^(\d{2})[-/](\d{2})[-/](\d{2})$/);
+  // yyyy/mm/dd or yyyy-mm-dd (4-digit year first)
+  let m = value.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+  if (m) return `${m[1]}-${m[2].padStart(2,"0")}-${m[3].padStart(2,"0")}`;
+  // d/m/yyyy or d-m-yyyy (4-digit year last, day/month 1-2 digits)
+  m = value.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+  if (m) return `${m[3]}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`;
+  // d/m/yy or d-m-yy (2-digit year, day/month 1-2 digits)
+  m = value.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{2})$/);
   if (m) {
     const year = parseInt(m[3], 10);
     const fullYear = year < 50 ? 2000 + year : 1900 + year;
-    return `${fullYear}-${m[2]}-${m[1]}`;
+    return `${fullYear}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`;
   }
   return value;
 }
