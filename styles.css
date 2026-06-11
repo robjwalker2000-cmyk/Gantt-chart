@@ -63,6 +63,86 @@ input {
   backdrop-filter: blur(16px);
 }
 
+.collapsible-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.collapsible-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  background: none;
+  border: none;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  border-radius: 24px;
+}
+
+.collapsible-toggle:hover {
+  background: rgba(35, 27, 22, 0.04);
+}
+
+.collapsible-chevron {
+  font-size: 0.75rem;
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.collapsible-card.is-collapsed .collapsible-chevron,
+.display-settings-card.is-collapsed .collapsible-chevron {
+  transform: rotate(-90deg);
+}
+
+.collapsible-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 18px 14px;
+  border-top: 1px solid var(--border);
+}
+
+.collapsible-card.is-collapsed .collapsible-body,
+.display-settings-card.is-collapsed .collapsible-body {
+  display: none;
+}
+
+.display-settings-body {
+  gap: 12px;
+}
+
+.display-settings-body .view-options-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  align-items: start;
+}
+
+.display-settings-body .inline-field {
+  flex: unset;
+  min-width: unset;
+  gap: 4px;
+}
+
+.display-settings-body .inline-field > span {
+  font-size: 0.78rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.display-settings-body .inline-checkbox {
+  gap: 6px;
+  font-size: 0.85rem;
+}
+
+
 .controls-panel {
   display: flex;
   flex-direction: column;
@@ -99,10 +179,17 @@ input {
 }
 
 .hero-card,
-.task-form,
 .tips-card,
 .board-card {
   padding: 24px;
+}
+
+.hero-card {
+  padding: 14px 18px;
+}
+
+.task-form {
+  padding: 14px 18px;
 }
 
 .eyebrow {
@@ -122,6 +209,13 @@ h2 {
 h1 {
   font-size: clamp(2rem, 4vw, 3.2rem);
   line-height: 0.96;
+}
+
+h1.hero-title {
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.3;
+  margin: 0;
 }
 
 .version-badge {
@@ -169,7 +263,52 @@ h2 {
 .task-form {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 10px;
+}
+
+.field-row.task-form-dates-row {
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+
+.task-form-dates-row .field {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.task-form-dates-row .field input[type="date"] {
+  padding: 8px 6px;
+  font-size: 0.8rem;
+  min-width: 0;
+}
+
+.field-row.task-form-meta-row {
+  align-items: flex-end;
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+
+.task-owner-field {
+  flex: 0 0 72px;
+  min-width: 0;
+}
+
+.task-owner-field input[type="text"] {
+  padding: 8px 8px;
+  font-size: 0.85rem;
+}
+
+.task-color-field {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.task-add-button {
+  flex: 0 0 auto;
+  align-self: flex-end;
+  padding: 9px 16px;
+  white-space: nowrap;
+  margin-bottom: 1px;
 }
 
 .field,
@@ -527,12 +666,11 @@ input[type="color"] {
 }
 
 .label-resizer {
-  position: sticky;
-  left: calc(var(--label-column) - 5px);
+  position: absolute;
+  right: -6px;
   top: 0;
   bottom: 0;
-  width: 10px;
-  margin-left: -5px;
+  width: 12px;
   z-index: 12;
   cursor: col-resize;
   background: transparent;
@@ -543,15 +681,18 @@ input[type="color"] {
   position: absolute;
   top: 0;
   bottom: 0;
-  left: 4px;
+  left: 5px;
   width: 2px;
   border-radius: 999px;
-  background: rgba(35, 27, 22, 0.12);
+  background: rgba(35, 27, 22, 0.18);
+  transition: background 0.15s, width 0.15s, left 0.15s;
 }
 
 .label-resizer:hover::before,
 .label-resizer.is-dragging::before {
-  background: rgba(35, 27, 22, 0.28);
+  left: 4px;
+  width: 4px;
+  background: rgba(35, 27, 22, 0.45);
 }
 
 .timeline-header,
@@ -612,6 +753,9 @@ input[type="color"] {
 .corner-cell {
   padding: 20px;
   min-width: 0;
+  position: sticky;
+  left: 0;
+  overflow: visible;
 }
 
 .corner-cell.month-corner {

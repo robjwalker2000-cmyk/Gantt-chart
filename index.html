@@ -24,22 +24,16 @@
 
       <div id="controls-panel-content" class="controls-panel-content">
         <div class="panel-card hero-card">
-          <p class="eyebrow">Project Planner</p>
-          <h1>Interactive Gantt Chart <span class="version-badge">v0.2</span></h1>
-          <p class="hero-copy">
-            Add tasks, change colors, and drag task bars or endpoints to update the schedule directly on the timeline.
-          </p>
+          <h1 class="hero-title">Interactive Gantt Chart <span class="version-badge">v0.3</span></h1>
         </div>
 
         <form id="task-form" class="panel-card task-form">
-          <h2>Add Task</h2>
-
           <label class="field">
             <span>Task name</span>
             <input id="task-name" name="taskName" type="text" maxlength="50" placeholder="Prototype design" required>
           </label>
 
-          <div class="field-row">
+          <div class="field-row task-form-dates-row">
             <label class="field">
               <span>Start</span>
               <input id="task-start" name="taskStart" type="date" required>
@@ -51,135 +45,153 @@
             </label>
           </div>
 
-          <label class="field">
-            <span>Owner initials</span>
-            <input id="task-owner" name="taskOwner" type="text" maxlength="4" placeholder="AB">
-          </label>
+          <div class="field-row task-form-meta-row">
+            <label class="field task-owner-field">
+              <span>Initials</span>
+              <input id="task-owner" name="taskOwner" type="text" maxlength="4" placeholder="AB">
+            </label>
 
-          <label class="field">
-            <span>Task color</span>
-            <div class="color-field">
-              <input id="task-color" name="taskColor" type="color" value="#ff7a59" aria-label="Choose task color">
-              <span id="task-color-value">#ff7a59</span>
-            </div>
-          </label>
+            <label class="field task-color-field">
+              <span>Colour</span>
+              <div class="color-field">
+                <input id="task-color" name="taskColor" type="color" value="#ff7a59" aria-label="Choose task color">
+                <span id="task-color-value">#ff7a59</span>
+              </div>
+            </label>
 
-          <button type="submit" class="primary-button">Add task</button>
+            <button type="submit" class="primary-button task-add-button">Add</button>
+          </div>
         </form>
 
-        <form id="plan-form" class="panel-card task-form">
-          <h2>Plan Settings</h2>
-
-          <label class="field">
-            <span>Plan title</span>
-            <input id="plan-title" name="planTitle" type="text" maxlength="80" placeholder="Website Launch Plan">
-          </label>
-
-          <div class="field-row">
+        <div class="panel-card collapsible-card" id="plan-settings-card">
+          <button type="button" class="collapsible-toggle" id="plan-settings-toggle">
+            Plan Settings <span class="collapsible-chevron">▾</span>
+          </button>
+          <form id="plan-form" class="collapsible-body">
             <label class="field">
-              <span>Plan start</span>
-              <input id="plan-start" name="planStart" type="date" required>
+              <span>Plan title</span>
+              <input id="plan-title" name="planTitle" type="text" maxlength="80" placeholder="Website Launch Plan">
             </label>
 
-            <label class="field">
-              <span>Plan end</span>
-              <input id="plan-end" name="planEnd" type="date" required>
-            </label>
-          </div>
-
-          <div class="field-row view-options-row">
-            <label class="field">
-              <span>Task detail level</span>
-              <select id="detail-level" name="detailLevel">
-                <option value="compressed" selected>Compressed</option>
-                <option value="summary">Summary</option>
-                <option value="detailed">Detailed</option>
-              </select>
-            </label>
-
-            <label class="field">
-              <span>Timeline labels</span>
-              <select id="timeline-label-mode" name="timelineLabelMode">
-                <option value="auto" selected>Automatic</option>
-                <option value="week">Weeks</option>
-                <option value="month">Months</option>
-              </select>
-            </label>
-
-            <div class="field checkbox-field inline-field">
-              <span>Date columns</span>
-              <label class="inline-checkbox" for="show-compact-dates">
-                <input id="show-compact-dates" name="showCompactDates" type="checkbox">
-                <span>Show</span>
+            <div class="field-row task-form-dates-row">
+              <label class="field">
+                <span>Start</span>
+                <input id="plan-start" name="planStart" type="date" required>
               </label>
-            </div>
-          </div>
 
-          <div class="field-row view-options-row">
-            <div class="field checkbox-field inline-field">
-              <span>Task date labels</span>
-              <label class="inline-checkbox" for="show-task-dates">
-                <input id="show-task-dates" name="showTaskDates" type="checkbox" checked>
-                <span>Show</span>
+              <label class="field">
+                <span>End</span>
+                <input id="plan-end" name="planEnd" type="date" required>
               </label>
             </div>
 
-            <div class="field checkbox-field inline-field">
-              <span>Task bar labels</span>
-              <label class="inline-checkbox" for="show-task-bar-labels">
-                <input id="show-task-bar-labels" name="showTaskBarLabels" type="checkbox" checked>
-                <span>Show</span>
+            <button type="submit" class="primary-button">Update plan</button>
+          </form>
+        </div>
+
+        <div class="panel-card task-form" id="display-settings-card">
+          <button type="button" class="collapsible-toggle" id="display-settings-toggle">
+            Display Settings <span class="collapsible-chevron">▾</span>
+          </button>
+          <div class="collapsible-body display-settings-body">
+            <div class="field-row view-options-row">
+              <label class="field">
+                <span>Detail level</span>
+                <select id="detail-level" name="detailLevel">
+                  <option value="compressed" selected>Compressed</option>
+                  <option value="summary">Summary</option>
+                  <option value="detailed">Detailed</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>Timeline labels</span>
+                <select id="timeline-label-mode" name="timelineLabelMode">
+                  <option value="auto" selected>Automatic</option>
+                  <option value="week">Weeks</option>
+                  <option value="month">Months</option>
+                </select>
+              </label>
+
+              <label class="field">
+                <span>Colour scheme</span>
+                <select id="chart-colour-scheme" name="chartColourScheme">
+                  <option value="warm">Warm</option>
+                  <option value="cool-grey">Light grey</option>
+                  <option value="striped-grey" selected>Striped grey</option>
+                </select>
               </label>
             </div>
 
-            <div class="field checkbox-field inline-field">
-              <span>Task labels & initials</span>
-              <label class="inline-checkbox" for="show-task-meta">
-                <input id="show-task-meta" name="showTaskMeta" type="checkbox" checked>
-                <span>Show</span>
-              </label>
+            <div class="field-row view-options-row">
+              <div class="field checkbox-field inline-field">
+                <span>Date columns</span>
+                <label class="inline-checkbox" for="show-compact-dates">
+                  <input id="show-compact-dates" name="showCompactDates" type="checkbox">
+                  <span>Show</span>
+                </label>
+              </div>
+
+              <div class="field checkbox-field inline-field">
+                <span>Task dates</span>
+                <label class="inline-checkbox" for="show-task-dates">
+                  <input id="show-task-dates" name="showTaskDates" type="checkbox" checked>
+                  <span>Show</span>
+                </label>
+              </div>
+
+              <div class="field checkbox-field inline-field">
+                <span>Bar labels</span>
+                <label class="inline-checkbox" for="show-task-bar-labels">
+                  <input id="show-task-bar-labels" name="showTaskBarLabels" type="checkbox" checked>
+                  <span>Show</span>
+                </label>
+              </div>
+
+              <div class="field checkbox-field inline-field">
+                <span>Labels & initials</span>
+                <label class="inline-checkbox" for="show-task-meta">
+                  <input id="show-task-meta" name="showTaskMeta" type="checkbox" checked>
+                  <span>Show</span>
+                </label>
+              </div>
+
+              <div class="field checkbox-field inline-field">
+                <span>Drag handles</span>
+                <label class="inline-checkbox" for="show-drag-handles">
+                  <input id="show-drag-handles" name="showDragHandles" type="checkbox" checked>
+                  <span>Show</span>
+                </label>
+              </div>
+
+              <div class="field checkbox-field inline-field">
+                <span>Label only</span>
+                <label class="inline-checkbox" for="show-label-only">
+                  <input id="show-label-only" name="showLabelOnly" type="checkbox">
+                  <span>Show</span>
+                </label>
+              </div>
+
+              <div class="field checkbox-field inline-field">
+                <span>Relative timeline</span>
+                <label class="inline-checkbox" for="show-relative-timeline">
+                  <input id="show-relative-timeline" name="showRelativeTimeline" type="checkbox">
+                  <span>Show</span>
+                </label>
+              </div>
             </div>
 
-            <div class="field checkbox-field inline-field">
-              <span>Label only</span>
-              <label class="inline-checkbox" for="show-label-only">
-                <input id="show-label-only" name="showLabelOnly" type="checkbox">
-                <span>Show</span>
-              </label>
-            </div>
-
-            <label class="field">
-              <span>Chart colour scheme</span>
-              <select id="chart-colour-scheme" name="chartColourScheme">
-                <option value="warm">Warm</option>
-                <option value="cool-grey">Light grey</option>
-                <option value="striped-grey" selected>Striped grey</option>
-              </select>
-            </label>
-          </div>
-
-          <div class="field-row view-options-row">
-            <div class="field checkbox-field inline-field">
-              <span>Relative timeline numbering</span>
-              <label class="inline-checkbox" for="show-relative-timeline">
-                <input id="show-relative-timeline" name="showRelativeTimeline" type="checkbox">
-                <span>Show</span>
-              </label>
-            </div>
-          </div>
-
-          <div class="field-row view-options-row">
-            <div class="field checkbox-field inline-field">
-              <span>Page background</span>
-              <div class="color-field">
-                <input id="page-bg-color" name="pageBgColor" type="color" value="#f5ede4" aria-label="Choose page background colour">
-                <button id="page-bg-reset" type="button" class="secondary-button">Reset</button>
+            <div class="field-row view-options-row">
+              <div class="field checkbox-field inline-field">
+                <span>Panel background</span>
+                <div class="color-field">
+                  <input id="page-bg-color" name="pageBgColor" type="color" value="#f5ede4" aria-label="Choose panel background colour">
+                  <button id="page-bg-reset" type="button" class="secondary-button">Reset</button>
+                </div>
               </div>
             </div>
           </div>
-
-          <button type="submit" class="primary-button">Update plan</button>
-        </form>
+        </div>
 
         <section class="panel-card tips-card">
           <h2>How to use</h2>
