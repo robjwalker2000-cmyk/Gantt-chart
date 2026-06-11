@@ -10,91 +10,85 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="app-shell">
-    <aside id="controls-panel" class="controls-panel">
-      <button
-        id="panel-toggle"
-        type="button"
-        class="panel-toggle"
-        aria-expanded="true"
-        aria-controls="controls-panel-content"
-      >
-        Hide panel
-      </button>
+  <div class="top-bar">
+    <span class="top-bar-title">Interactive Gantt Chart <span class="version-badge">v0.6</span></span>
 
-      <div id="controls-panel-content" class="controls-panel-content">
-        <div class="panel-card hero-card">
-          <h1 class="hero-title">Interactive Gantt Chart <span class="version-badge">v0.5</span></h1>
-        </div>
+    <div class="top-bar-actions">
 
-        <form id="task-form" class="panel-card task-form">
-          <label class="field">
-            <span>Task name</span>
-            <input id="task-name" name="taskName" type="text" maxlength="50" placeholder="Prototype design" required>
-          </label>
-
-          <div class="field-row task-form-dates-row">
+      <!-- Add Task -->
+      <div class="top-bar-dropdown-wrap">
+        <button id="add-task-toggle" type="button" class="top-bar-button top-bar-button--accent">+ Add Task</button>
+        <div id="add-task-panel" class="top-bar-panel" hidden>
+          <form id="task-form">
             <label class="field">
-              <span>Start</span>
-              <input id="task-start" name="taskStart" type="date" required>
-            </label>
-
-            <label class="field">
-              <span>End</span>
-              <input id="task-end" name="taskEnd" type="date" required>
-            </label>
-          </div>
-
-          <div class="field-row task-form-meta-row">
-            <label class="field task-owner-field">
-              <span>Initials</span>
-              <input id="task-owner" name="taskOwner" type="text" maxlength="4" placeholder="AB">
-            </label>
-
-            <label class="field task-color-field">
-              <span>Colour</span>
-              <div class="color-field">
-                <input id="task-color" name="taskColor" type="color" value="#ff7a59" aria-label="Choose task color">
-                <span id="task-color-value">#ff7a59</span>
-              </div>
-              <div class="color-swatches" id="task-color-swatches"></div>
-            </label>
-
-            <button type="submit" class="primary-button task-add-button">Add</button>
-          </div>
-        </form>
-
-        <div class="panel-card collapsible-card" id="plan-settings-card">
-          <button type="button" class="collapsible-toggle" id="plan-settings-toggle">
-            Plan Settings <span class="collapsible-chevron">▾</span>
-          </button>
-          <form id="plan-form" class="collapsible-body">
-            <label class="field">
-              <span>Plan title</span>
-              <input id="plan-title" name="planTitle" type="text" maxlength="80" placeholder="Website Launch Plan">
+              <span>Task name</span>
+              <input id="task-name" name="taskName" type="text" maxlength="50" placeholder="Prototype design" required>
             </label>
 
             <div class="field-row task-form-dates-row">
               <label class="field">
                 <span>Start</span>
+                <input id="task-start" name="taskStart" type="date" required>
+              </label>
+              <label class="field">
+                <span>End</span>
+                <input id="task-end" name="taskEnd" type="date" required>
+              </label>
+            </div>
+
+            <div class="field-row task-form-meta-row">
+              <label class="field task-owner-field">
+                <span>Initials</span>
+                <input id="task-owner" name="taskOwner" type="text" maxlength="4" placeholder="AB">
+              </label>
+              <label class="field task-color-field">
+                <span>Colour</span>
+                <div class="color-picker-popup-wrap">
+                  <button type="button" id="task-color-btn" class="color-preview-btn" style="background:#ff7a59" aria-label="Choose task colour"></button>
+                  <div class="color-picker-popup" id="task-color-popup" hidden>
+                    <div class="color-swatches" id="task-color-swatches"></div>
+                    <div class="color-picker-custom-row">
+                      <input id="task-color" name="taskColor" type="color" value="#ff7a59" aria-label="Custom colour">
+                      <span id="task-color-value">#ff7a59</span>
+                    </div>
+                  </div>
+                </div>
+              </label>
+              <button type="submit" class="primary-button task-add-button">Add</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Plan Settings -->
+      <div class="top-bar-dropdown-wrap">
+        <button id="plan-panel-toggle" type="button" class="top-bar-button">Plan ▾</button>
+        <div id="plan-settings-panel" class="top-bar-panel" hidden>
+          <form id="plan-form">
+            <label class="field">
+              <span>Plan title</span>
+              <input id="plan-title" name="planTitle" type="text" maxlength="80" placeholder="Website Launch Plan">
+            </label>
+            <div class="field-row task-form-dates-row">
+              <label class="field">
+                <span>Start</span>
                 <input id="plan-start" name="planStart" type="date" required>
               </label>
-
               <label class="field">
                 <span>End</span>
                 <input id="plan-end" name="planEnd" type="date" required>
               </label>
             </div>
-
             <button type="submit" class="primary-button">Update plan</button>
           </form>
         </div>
+      </div>
 
-        <div class="panel-card collapsible-card" id="display-settings-card">
-          <button type="button" class="collapsible-toggle" id="display-settings-toggle">
-            Display Settings <span class="collapsible-chevron">▾</span>
-          </button>
-          <div class="collapsible-body display-settings-body">
+      <!-- Display Settings -->
+      <div class="top-bar-dropdown-wrap">
+        <button id="display-panel-toggle" type="button" class="top-bar-button">Display ▾</button>
+        <div id="display-settings-panel" class="top-bar-panel top-bar-panel--wide" hidden>
+          <div class="display-settings-body">
             <div class="field-row view-options-row">
               <label class="field">
                 <span>Detail level</span>
@@ -104,7 +98,6 @@
                   <option value="detailed">Detailed</option>
                 </select>
               </label>
-
               <label class="field">
                 <span>Timeline labels</span>
                 <select id="timeline-label-mode" name="timelineLabelMode">
@@ -113,7 +106,6 @@
                   <option value="month">Months</option>
                 </select>
               </label>
-
               <label class="field">
                 <span>Colour scheme</span>
                 <select id="chart-colour-scheme" name="chartColourScheme">
@@ -132,7 +124,6 @@
                   <span>Show</span>
                 </label>
               </div>
-
               <div class="field checkbox-field inline-field">
                 <span>Task dates</span>
                 <label class="inline-checkbox" for="show-task-dates">
@@ -140,7 +131,6 @@
                   <span>Show</span>
                 </label>
               </div>
-
               <div class="field checkbox-field inline-field">
                 <span>Bar labels</span>
                 <label class="inline-checkbox" for="show-task-bar-labels">
@@ -148,7 +138,6 @@
                   <span>Show</span>
                 </label>
               </div>
-
               <div class="field checkbox-field inline-field">
                 <span>Labels & initials</span>
                 <label class="inline-checkbox" for="show-task-meta">
@@ -156,7 +145,6 @@
                   <span>Show</span>
                 </label>
               </div>
-
               <div class="field checkbox-field inline-field">
                 <span>Drag handles</span>
                 <label class="inline-checkbox" for="show-drag-handles">
@@ -164,7 +152,6 @@
                   <span>Show</span>
                 </label>
               </div>
-
               <div class="field checkbox-field inline-field">
                 <span>Label only</span>
                 <label class="inline-checkbox" for="show-label-only">
@@ -172,7 +159,6 @@
                   <span>Show</span>
                 </label>
               </div>
-
               <div class="field checkbox-field inline-field">
                 <span>Relative timeline</span>
                 <label class="inline-checkbox" for="show-relative-timeline">
@@ -180,45 +166,65 @@
                   <span>Show</span>
                 </label>
               </div>
+              <div class="field checkbox-field inline-field">
+                <span>Today's date</span>
+                <label class="inline-checkbox" for="show-today-marker">
+                  <input id="show-today-marker" name="showTodayMarker" type="checkbox" checked>
+                  <span>Show</span>
+                </label>
+              </div>
+              <div class="field checkbox-field inline-field">
+                <span>Duration column</span>
+                <label class="inline-checkbox" for="show-duration-column">
+                  <input id="show-duration-column" name="showDurationColumn" type="checkbox">
+                  <span>Show</span>
+                </label>
+              </div>
             </div>
 
-            <div class="field-row view-options-row">
-              <div class="field checkbox-field inline-field">
-                <span>Panel background</span>
-                <div class="color-field">
-                  <input id="page-bg-color" name="pageBgColor" type="color" value="#f5ede4" aria-label="Choose panel background colour">
+            <div class="field-row">
+              <div class="field">
+                <span>Chart background</span>
+                <div class="color-picker-row">
+                  <div class="color-picker-popup-wrap">
+                    <button type="button" id="bg-color-btn" class="color-preview-btn" style="background:#f5ede4" aria-label="Choose background colour"></button>
+                    <div class="color-picker-popup color-picker-popup--left" id="bg-color-popup" hidden>
+                      <div class="color-swatches" id="bg-color-swatches"></div>
+                      <div class="color-picker-custom-row">
+                        <input id="page-bg-color" name="pageBgColor" type="color" value="#f5ede4" aria-label="Custom colour">
+                        <span id="bg-color-value">#f5ede4</span>
+                      </div>
+                    </div>
+                  </div>
                   <button id="page-bg-reset" type="button" class="secondary-button">Reset</button>
                 </div>
-                <div class="color-swatches" id="bg-color-swatches"></div>
               </div>
             </div>
           </div>
         </div>
-
-        <section class="panel-card tips-card">
-          <h2>How to use</h2>
-          <div class="file-actions">
-            <button id="export-csv" type="button" class="secondary-button wide-button">Export CSV</button>
-            <button id="export-excel" type="button" class="secondary-button wide-button">Export Excel</button>
-            <button id="export-ppt" type="button" class="secondary-button wide-button">Export PPT</button>
-            <button id="copy-chart-image" type="button" class="secondary-button wide-button">Copy Chart Image</button>
-            <button id="paste-import-open" type="button" class="secondary-button wide-button">Paste / Type Import</button>
-            <label class="secondary-button wide-button file-input-label">
-              Import CSV
-              <input id="import-csv" type="file" accept=".csv,text/csv">
-            </label>
-          </div>
-          <ul>
-            <li>Drag the grip beside a task name to move that task up or down the list.</li>
-            <li>Drag the center of a task bar to move the whole task.</li>
-            <li>Drag the left or right handle to resize the start or end date.</li>
-            <li>Use the color swatch on each row to customise the task color.</li>
-            <li>Set the full plan window and zoom the timeline in or out from the chart header.</li>
-          </ul>
-        </section>
       </div>
-    </aside>
 
+      <!-- Import / Export -->
+      <div class="io-menu-wrap">
+        <button id="io-menu-toggle" type="button" class="top-bar-button">Import / Export ▾</button>
+        <div id="io-menu" class="io-menu" hidden>
+          <button id="export-csv" type="button" class="io-menu-item">Export CSV</button>
+          <button id="export-excel" type="button" class="io-menu-item">Export Excel</button>
+          <button id="export-ppt" type="button" class="io-menu-item">Export PPT</button>
+          <button id="copy-chart-image" type="button" class="io-menu-item">Copy Chart Image</button>
+          <div class="io-menu-divider"></div>
+          <button id="paste-import-open" type="button" class="io-menu-item">Paste / Type Import</button>
+          <label class="io-menu-item file-input-label">
+            Import CSV
+            <input id="import-csv" type="file" accept=".csv,text/csv">
+          </label>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="app-shell">
     <main class="board-panel">
       <div class="panel-card board-card">
         <div class="board-header">
@@ -233,18 +239,10 @@
 
           <div class="chart-actions">
             <div class="timeline-mode-switch" role="group" aria-label="Timeline slot size">
-              <button type="button" class="timeline-mode-button" data-timeline-mode="day" aria-pressed="false" title="Force day slots">
-                Day
-              </button>
-              <button type="button" class="timeline-mode-button" data-timeline-mode="week" aria-pressed="false" title="Force week slots">
-                Week
-              </button>
-              <button type="button" class="timeline-mode-button" data-timeline-mode="month" aria-pressed="false" title="Force month slots">
-                Month
-              </button>
-              <button type="button" class="timeline-mode-button" data-timeline-mode="year" aria-pressed="false" title="Force year slots">
-                Year
-              </button>
+              <button type="button" class="timeline-mode-button" data-timeline-mode="day" aria-pressed="false" title="Force day slots">Day</button>
+              <button type="button" class="timeline-mode-button" data-timeline-mode="week" aria-pressed="false" title="Force week slots">Week</button>
+              <button type="button" class="timeline-mode-button" data-timeline-mode="month" aria-pressed="false" title="Force month slots">Month</button>
+              <button type="button" class="timeline-mode-button" data-timeline-mode="year" aria-pressed="false" title="Force year slots">Year</button>
             </div>
             <label class="zoom-input-wrap" for="zoom-label">
               <input id="zoom-label" class="zoom-label" type="number" min="8" max="360" step="1" value="100" aria-label="Zoom percentage">
